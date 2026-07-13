@@ -1,0 +1,351 @@
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  width: 380px;
+  color: #1f2430;
+  background: #fafbfc;
+}
+
+.af-app {
+  padding: 14px;
+}
+
+.af-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.af-header h1 {
+  font-size: 16px;
+  margin: 0;
+}
+
+.af-icon-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+.af-icon-btn:hover { background: #eef0f4; }
+
+.af-resume-menu {
+  border: 1px solid #e1e4ea;
+  border-radius: 10px;
+  background: white;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.af-resume-menu.hidden { display: none; }
+
+.af-resume-menu-list {
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  gap: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.af-resume-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  border: 1px solid transparent;
+  background: #f6f7fa;
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.af-resume-menu-item:hover {
+  background: #eef2ff;
+  border-color: #cdd9fb;
+}
+
+.af-resume-menu-name {
+  font-weight: 600;
+  color: #1f2430;
+}
+
+.af-resume-menu-default {
+  font-size: 10px;
+  color: #2f6fed;
+  background: #e8effe;
+  border-radius: 999px;
+  padding: 2px 8px;
+  flex-shrink: 0;
+}
+
+.af-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.af-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+.af-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.af-btn:hover:not(:disabled) { opacity: 0.9; }
+
+.af-btn-primary {
+  background: #2f6fed;
+  color: white;
+}
+
+.af-btn-secondary {
+  background: #eef0f4;
+  color: #1f2430;
+}
+
+.af-status {
+  min-height: 18px;
+  font-size: 12px;
+  color: #55607a;
+  margin-bottom: 8px;
+  white-space: pre-line;
+}
+
+.af-preview,
+.af-essay-panel {
+  border: 1px solid #e1e4ea;
+  border-radius: 10px;
+  background: white;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.af-preview.hidden,
+.af-essay-panel.hidden { display: none; }
+
+.af-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #f6f7fa;
+  border-bottom: 1px solid #e1e4ea;
+}
+
+.af-preview-list {
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #f9fafc;
+}
+
+/* --- Карточка поля (превью сохранения) --- */
+
+.af-field-card {
+  background: white;
+  border: 1px solid #e6e8ee;
+  border-radius: 10px;
+  padding: 10px 12px;
+  box-shadow: 0 1px 2px rgba(20, 30, 60, 0.04);
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.af-field-card:hover {
+  border-color: #d6dce6;
+  box-shadow: 0 2px 6px rgba(20, 30, 60, 0.08);
+}
+
+.af-field-card-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.af-field-card-top input[type="checkbox"] {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  accent-color: #2f6fed;
+}
+
+.af-field-card-top .af-field-label {
+  flex: 1;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  padding: 2px 0;
+  font-size: 13px;
+}
+.af-field-card-top .af-field-label:focus {
+  outline: none;
+  border-bottom: 1px solid #2f6fed;
+}
+
+.af-type-badge {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: #55607a;
+  background: #eef0f4;
+  border-radius: 999px;
+  padding: 2px 8px;
+  text-transform: lowercase;
+}
+
+.af-field-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.af-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.af-mini-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #9aa2b3;
+  font-weight: 600;
+}
+
+.af-field-key,
+.af-field-value {
+  width: 100%;
+  font-size: 12px;
+  padding: 6px 8px;
+  border: 1px solid #e6e8ee;
+  border-radius: 6px;
+  background: #fbfbfd;
+}
+.af-field-key:focus,
+.af-field-value:focus {
+  outline: none;
+  border-color: #2f6fed;
+  background: white;
+}
+
+.af-preview-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 9px 12px;
+  border-top: 1px solid #eceef2;
+}
+
+/* --- Панель вопросов вакансии (essay) --- */
+
+.af-essay-list {
+  max-height: 340px;
+  overflow-y: auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #f9fafc;
+}
+
+.af-essay-item {
+  background: white;
+  border: 1px solid #e6e8ee;
+  border-radius: 10px;
+  padding: 10px 12px;
+  box-shadow: 0 1px 2px rgba(20, 30, 60, 0.04);
+}
+
+.af-essay-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.af-essay-btn-group {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.af-essay-question {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #1f2430;
+}
+
+.af-sparkle-btn {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #6a5cff, #2f6fed);
+  color: white;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.af-sparkle-btn:hover:not(:disabled) { opacity: 0.9; }
+.af-sparkle-btn:disabled { cursor: not-allowed; }
+
+.af-context-btn {
+  background: linear-gradient(135deg, #2bb673, #1a9e63);
+}
+
+.af-sparkle-btn.af-loading::after {
+  content: "";
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: af-spin 0.7s linear infinite;
+}
+
+@keyframes af-spin {
+  to { transform: rotate(360deg); }
+}
+
+.af-essay-answer {
+  width: 100%;
+  font-size: 12px;
+  padding: 8px 10px;
+  border: 1px solid #e6e8ee;
+  border-radius: 7px;
+  font-family: inherit;
+  resize: vertical;
+  background: #fbfbfd;
+}
+.af-essay-answer:focus {
+  outline: none;
+  border-color: #2f6fed;
+  background: white;
+}
+
+.af-footer {
+  font-size: 11px;
+  color: #8a93a6;
+  text-align: center;
+}

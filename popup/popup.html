@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Smart Autofill Library</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="af-app">
+    <header class="af-header">
+      <h1>Smart Autofill</h1>
+      <button id="af-open-options" class="af-icon-btn" title="Настройки">⚙️</button>
+    </header>
+
+    <div id="af-resume-menu" class="af-resume-menu hidden">
+      <div class="af-preview-header">
+        <span id="af-resume-menu-title">Выберите резюме</span>
+        <button id="af-resume-menu-close" class="af-icon-btn">✕</button>
+      </div>
+      <div id="af-resume-menu-list" class="af-resume-menu-list"></div>
+    </div>
+
+    <div class="af-actions">
+      <button id="af-autofill-btn" class="af-btn af-btn-primary">⚡ Автозаполнить</button>
+      <button id="af-scan-save-btn" class="af-btn af-btn-secondary">💾 Сохранить в библиотеку</button>
+    </div>
+
+    <div id="af-status" class="af-status"></div>
+
+    <div id="af-essay-panel" class="af-essay-panel hidden">
+      <div class="af-preview-header">
+        <span>Вопросы вакансии — сгенерируйте ответы с помощью ✨</span>
+        <button id="af-essay-close" class="af-icon-btn">✕</button>
+      </div>
+      <div id="af-essay-list" class="af-essay-list"></div>
+      <div class="af-preview-footer">
+        <button id="af-essay-cancel" class="af-btn af-btn-secondary">Отмена</button>
+        <button id="af-essay-apply" class="af-btn af-btn-primary">Вставить на страницу</button>
+      </div>
+    </div>
+
+    <div id="af-preview" class="af-preview hidden">
+      <div class="af-preview-header">
+        <span>Найденные поля — отметьте, что сохранить</span>
+        <button id="af-preview-close" class="af-icon-btn">✕</button>
+      </div>
+      <div id="af-preview-list" class="af-preview-list"></div>
+      <div class="af-preview-footer">
+        <button id="af-preview-cancel" class="af-btn af-btn-secondary">Отмена</button>
+        <button id="af-preview-confirm" class="af-btn af-btn-primary">Сохранить выбранное</button>
+      </div>
+    </div>
+
+    <div class="af-footer">
+      <span id="af-library-count"></span>
+    </div>
+  </div>
+
+  <script src="../lib/conceptVocabulary.js"></script>
+  <script src="../lib/storage.js"></script>
+  <script src="../lib/matcher.js"></script>
+  <script src="../lib/geminiClient.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

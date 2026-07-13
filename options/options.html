@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Настройки Smart Autofill</title>
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+  <div class="af-options">
+    <h1>Настройки Smart Autofill</h1>
+
+    <section class="af-card">
+      <h2>Gemini API</h2>
+      <label class="af-field">
+        <span>API-ключ Gemini</span>
+        <input type="password" id="af-api-key" placeholder="AIza..." autocomplete="off" />
+      </label>
+      <label class="af-field">
+        <span>Модель</span>
+        <input type="text" id="af-model" placeholder="gemini-flash-lite-latest" />
+      </label>
+      <label class="af-checkbox">
+        <input type="checkbox" id="af-use-gemini" />
+        <span>Использовать Gemini как fallback, когда правила не находят соответствие</span>
+      </label>
+      <button id="af-save-settings" class="af-btn af-btn-primary">Сохранить настройки</button>
+      <span id="af-settings-status" class="af-inline-status"></span>
+      <p class="af-hint">
+        Ключ можно получить на
+        <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.
+        Ключ хранится только локально в этом браузере (chrome.storage.local) и используется
+        только для запросов к Gemini API напрямую с вашего устройства.
+      </p>
+    </section>
+
+    <section class="af-card">
+      <h2>Контекст о вашем опыте</h2>
+      <p class="af-hint" style="margin-top: 0;">
+        Опишите свободным текстом, кто вы, чем занимались, что вам интересно и как вы обычно
+        рассказываете о себе. Это будет использовано вместе с резюме, чтобы генерировать ответы
+        на сложные вопросы анкет вакансий (например "Why do you want to work here?") в вашем стиле.
+      </p>
+      <textarea id="af-context" class="af-textarea" rows="6" placeholder="Например: я фронтенд-разработчик с 4 годами опыта, люблю решать сложные UI-задачи, сейчас ищу продуктовую компанию с интересными пользовательскими проблемами..."></textarea>
+      <button id="af-save-context" class="af-btn af-btn-primary">Сохранить контекст</button>
+      <span id="af-context-status" class="af-inline-status"></span>
+    </section>
+
+    <section class="af-card">
+      <div class="af-card-header">
+        <h2>Резюме (файлы)</h2>
+      </div>
+      <p class="af-hint" style="margin-top: 0;">
+        Загрузите одно или несколько резюме в формате PDF или DOCX. При автозаполнении, если на
+        странице найдено поле загрузки резюме, в popup появится меню — выбранный файл будет
+        реально подставлен в это поле. Текст резюме также используется для генерации ответов на
+        вопросы вакансий. Резюме по умолчанию используется, если вы не выберете другое в меню.
+      </p>
+      <div class="af-upload-row">
+        <input type="file" id="af-resume-file-input" accept=".pdf,.docx" class="af-file-input" />
+        <span id="af-resume-upload-status" class="af-inline-status"></span>
+      </div>
+      <div id="af-resume-list" class="af-resume-list"></div>
+      <p id="af-resume-empty" class="af-hint hidden">Резюме ещё не загружены.</p>
+    </section>
+
+    <section class="af-card">
+      <div class="af-card-header">
+        <h2>Библиотека сохранённых полей</h2>
+        <button id="af-refresh-library" class="af-icon-btn" title="Обновить">↻</button>
+      </div>
+      <div id="af-library-list" class="af-library-list"></div>
+      <p id="af-library-empty" class="af-hint hidden">Библиотека пуста. Сохраните поля со страницы через popup расширения.</p>
+    </section>
+
+    <footer class="af-version-footer">
+      Smart Autofill Library <span id="af-version"></span>
+    </footer>
+  </div>
+
+  <script src="../lib/storage.js"></script>
+  <script src="../lib/vendor/pdf.min.js"></script>
+  <script src="../lib/vendor/mammoth.browser.js"></script>
+  <script src="../lib/resumeParser.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

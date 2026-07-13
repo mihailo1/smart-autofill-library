@@ -1,0 +1,233 @@
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #f3f4f7;
+  color: #1f2430;
+}
+
+.af-options {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 28px 20px 60px;
+}
+
+h1 {
+  font-size: 20px;
+  margin-bottom: 18px;
+}
+
+.af-card {
+  background: white;
+  border: 1px solid #e1e4ea;
+  border-radius: 10px;
+  padding: 18px;
+  margin-bottom: 18px;
+}
+
+.af-card h2 {
+  font-size: 15px;
+  margin: 0 0 12px;
+}
+
+.af-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.af-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
+.af-field input {
+  padding: 8px 10px;
+  border: 1px solid #dfe2e8;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.af-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+
+.af-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.af-btn-primary {
+  background: #2f6fed;
+  color: white;
+}
+
+.af-icon-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.af-inline-status {
+  margin-left: 10px;
+  font-size: 12px;
+  color: #2f9e44;
+}
+
+.af-hint {
+  font-size: 12px;
+  color: #6a7488;
+  margin-top: 10px;
+  line-height: 1.5;
+}
+.af-hint.hidden { display: none; }
+
+.af-library-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.af-library-item {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid #eceef2;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.af-library-item input {
+  padding: 6px 8px;
+  border: 1px solid #dfe2e8;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.af-library-item .af-key-label {
+  font-size: 10px;
+  color: #8a93a6;
+}
+
+.af-delete-btn {
+  border: none;
+  background: #fdeceb;
+  color: #d92d20;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.af-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #dfe2e8;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+  margin-bottom: 10px;
+}
+
+.af-resume-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.af-resume-item {
+  border: 1px solid #eceef2;
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.af-resume-item-active {
+  border-color: #2f6fed;
+  background: #f5f8ff;
+}
+
+.af-resume-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.af-radio {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #444c5e;
+  cursor: pointer;
+}
+
+.af-resume-name {
+  padding: 7px 10px;
+  border: 1px solid #dfe2e8;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.af-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.af-file-input {
+  font-size: 12px;
+}
+
+.af-resume-file-meta {
+  font-size: 11px;
+  color: #6a7488;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.af-resume-text-ok {
+  color: #1a9e63;
+}
+
+.af-resume-text-warn {
+  color: #c98a00;
+}
+
+.af-resume-content {
+  margin-bottom: 0;
+}
+
+.af-version-footer {
+  margin-top: 28px;
+  text-align: center;
+  font-size: 12px;
+  color: #8a93a6;
+}
+
+.af-version-footer #af-version {
+  font-variant-numeric: tabular-nums;
+  color: #6a7488;
+  font-weight: 600;
+}
