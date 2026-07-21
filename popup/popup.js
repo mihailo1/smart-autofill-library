@@ -6,6 +6,10 @@
 const statusEl = document.getElementById("af-status");
 const autofillBtn = document.getElementById("af-autofill-btn");
 const scanSaveBtn = document.getElementById("af-scan-save-btn");
+const autoSearchInput = document.getElementById("af-auto-search");
+const shortcutLabelEl = document.getElementById("af-shortcut-label");
+const saveShortcutLabelEl = document.getElementById("af-save-shortcut-label");
+const shortcutLinkEl = document.getElementById("af-shortcut-link");
 const previewEl = document.getElementById("af-preview");
 const previewListEl = document.getElementById("af-preview-list");
 const libraryCountEl = document.getElementById("af-library-count");
@@ -544,8 +548,56 @@ document.getElementById("af-essay-apply").addEventListener("click", async () => 
   }
 });
 
+// --- Автопоиск + шорткат ---
+
+autoSearchInput.addEventListener("change", async () => {
+  const settings = await afGetSettings();
+  settings.autoSearchMode = autoSearchInput.checked;
+  await afSetSettings(settings);
+  setStatus(
+    autoSearchInput.checked
+      ? "Автопоиск включён — на страницах с полями появится хинт."
+      : "Автопоиск выключен."
+  );
+});
+
+shortcutLinkEl.addEventListener("click", (e) => {
+  e.preventDefault();
+  // Chrome opens the shortcuts page when user goes to chrome://extensions/shortcuts
+  chrome.tabs.create({ url: "chrome://extensions/shortcuts" });
+});
+
+async function loadAutoSearchToggle() {
+  const settings = await afGetSettings();
+  autoSearchInput.checked = !!settings.autoSearchMode;
+}
+
+function afSetShortcutLabel(el, shortcut) {
+  if (!el) return;
+  if (shortcut) {
+    el.textContent = shortcut;
+    el.title = "";
+  } else {
+    el.textContent = "не задан";
+    el.title = "Назначьте комбинацию на странице шорткатов Chrome";
+  }
+}
+
+async function loadShortcutLabel() {
+  try {
+    const res = await chrome.runtime.sendMessage({ type: "AF_GET_COMMAND_SHORTCUT" });
+    afSetShortcutLabel(shortcutLabelEl, res?.shortcut || res?.shortcuts?.autofill || "");
+    afSetShortcutLabel(saveShortcutLabelEl, res?.saveShortcut || res?.shortcuts?.save || "");
+  } catch (e) {
+    if (shortcutLabelEl) shortcutLabelEl.textContent = "Alt+Shift+A";
+    if (saveShortcutLabelEl) saveShortcutLabelEl.textContent = "Alt+Shift+S";
+  }
+}
+
 (async function initPopup() {
   await refreshLibraryCount();
+  await loadAutoSearchToggle();
+  await loadShortcutLabel();
   try {
     const tab = await getActiveTab();
     const tabUrl = tab?.url || "";

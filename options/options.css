@@ -52,6 +52,19 @@ h1 {
   font-size: 13px;
 }
 
+.af-options kbd {
+  display: inline-block;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  color: #1f2430;
+  background: #eef0f4;
+  border: 1px solid #dfe2e8;
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  padding: 1px 6px;
+}
+
 .af-checkbox {
   display: flex;
   align-items: center;

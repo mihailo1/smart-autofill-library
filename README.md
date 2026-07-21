@@ -39,6 +39,8 @@ Remembers your answers as you type them, matches them to new forms with rules fi
 | --- | --- |
 | **💾 Save to library** | Scans the current page for filled fields and lets you review/edit which to remember. |
 | **⚡ Autofill** | Matches every field against your library (rules → Gemini fallback) and fills them. |
+| **🔍 Auto search** | Toggle in the popup/options. When on, pages are scanned automatically and a small hint appears if fillable fields are found. |
+| **⌨️ Shortcuts** | **Alt+Shift+A** — fill from library. **Alt+Shift+S** — save filled fields to library (no preview). Both work with auto search off. Rebind at `chrome://extensions/shortcuts`. |
 | **✨ Generate** | For open-ended questions with no saved answer, drafts a reply from your context + resume. |
 | **🧠 Save to context** | Stashes a good Q&A back into your context so future answers get sharper. |
 
@@ -63,8 +65,11 @@ Remembers your answers as you type them, matches them to new forms with rules fi
 - **`lib/fieldDetector.js`** — the only code that touches the page DOM: scans fields, guesses concepts, detects resume uploads and essay-style questions, and applies values.
 - **`lib/matcher.js`** + **`lib/conceptVocabulary.js`** — fast, free, offline rule matching against a vocabulary of common concepts.
 - **`lib/geminiClient.js`** — fallback matching, field classification, and essay-answer generation via the Gemini API.
+- **`lib/autofillEngine.js`** — shared fill pipeline (rules → Gemini → apply → default resume) used by the background shortcut.
 - **`lib/storage.js`** — thin wrapper over `chrome.storage.local` for the library, settings, and resumes.
 - **`lib/resumeParser.js`** (+ `vendor/` pdf.js & mammoth) — extracts text from PDF/DOCX resumes.
+- **`background/`** — service worker for the keyboard command and fill requests from the page hint.
+- **`content/`** — content script: DOM IO, auto-search observer, floating hint + toast.
 - **`popup/`** — the orchestrator UI. **`options/`** — settings, resumes, context, and the saved-field library.
 
 ## 🔐 Privacy

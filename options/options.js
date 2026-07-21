@@ -1,6 +1,9 @@
 const apiKeyInput = document.getElementById("af-api-key");
 const modelInput = document.getElementById("af-model");
 const useGeminiInput = document.getElementById("af-use-gemini");
+const autoSearchInput = document.getElementById("af-auto-search");
+const shortcutCurrentEl = document.getElementById("af-shortcut-current");
+const saveShortcutCurrentEl = document.getElementById("af-save-shortcut-current");
 const saveSettingsBtn = document.getElementById("af-save-settings");
 const settingsStatusEl = document.getElementById("af-settings-status");
 const libraryListEl = document.getElementById("af-library-list");
@@ -19,7 +22,38 @@ async function loadSettings() {
   apiKeyInput.value = settings.geminiApiKey || "";
   modelInput.value = settings.geminiModel || AF_DEFAULT_SETTINGS.geminiModel;
   useGeminiInput.checked = !!settings.useGeminiFallback;
+  autoSearchInput.checked = !!settings.autoSearchMode;
   contextInput.value = settings.contextText || "";
+}
+
+autoSearchInput.addEventListener("change", async () => {
+  const settings = await afGetSettings();
+  settings.autoSearchMode = autoSearchInput.checked;
+  await afSetSettings(settings);
+});
+
+async function loadShortcutLabel() {
+  try {
+    const res = await chrome.runtime.sendMessage({ type: "AF_GET_COMMAND_SHORTCUT" });
+    const autofill = res?.shortcut || res?.shortcuts?.autofill || "";
+    const save = res?.saveShortcut || res?.shortcuts?.save || "";
+    shortcutCurrentEl.textContent = autofill || "не задан (chrome://extensions/shortcuts)";
+    if (saveShortcutCurrentEl) {
+      saveShortcutCurrentEl.textContent = save || "не задан (chrome://extensions/shortcuts)";
+    }
+  } catch (e) {
+    shortcutCurrentEl.textContent = "Alt+Shift+A (по умолчанию)";
+    if (saveShortcutCurrentEl) saveShortcutCurrentEl.textContent = "Alt+Shift+S (по умолчанию)";
+  }
+}
+
+// chrome:// links often blocked from <a>; open via API
+const openShortcutsLink = document.getElementById("af-open-shortcuts");
+if (openShortcutsLink) {
+  openShortcutsLink.addEventListener("click", (e) => {
+    e.preventDefault();
+    chrome.tabs.create({ url: "chrome://extensions/shortcuts" });
+  });
 }
 
 saveSettingsBtn.addEventListener("click", async () => {
@@ -27,6 +61,7 @@ saveSettingsBtn.addEventListener("click", async () => {
   settings.geminiApiKey = apiKeyInput.value.trim();
   settings.geminiModel = modelInput.value.trim() || AF_DEFAULT_SETTINGS.geminiModel;
   settings.useGeminiFallback = useGeminiInput.checked;
+  settings.autoSearchMode = autoSearchInput.checked;
   await afSetSettings(settings);
   settingsStatusEl.textContent = "Сохранено ✓";
   setTimeout(() => (settingsStatusEl.textContent = ""), 2000);
@@ -187,5 +222,6 @@ if (versionEl && typeof chrome !== "undefined" && chrome.runtime?.getManifest) {
 }
 
 loadSettings();
+loadShortcutLabel();
 loadLibrary();
 loadResumes();

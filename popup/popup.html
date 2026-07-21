@@ -25,6 +25,25 @@
       <button id="af-scan-save-btn" class="af-btn af-btn-secondary">💾 Сохранить в библиотеку</button>
     </div>
 
+    <label class="af-toggle-row" title="На страницах с формами появится подсказка">
+      <span class="af-toggle-text">
+        <span class="af-toggle-title">Автопоиск полей</span>
+        <span class="af-toggle-sub">Хинт на страницах, где есть поля</span>
+      </span>
+      <input type="checkbox" id="af-auto-search" class="af-toggle-input" />
+      <span class="af-toggle-track" aria-hidden="true"></span>
+    </label>
+
+    <div class="af-shortcut-hint" id="af-shortcut-hint">
+      <div class="af-shortcut-line">
+        Заполнить: <kbd id="af-shortcut-label">Alt+Shift+A</kbd>
+      </div>
+      <div class="af-shortcut-line">
+        Сохранить: <kbd id="af-save-shortcut-label">Alt+Shift+S</kbd>
+      </div>
+      <a href="#" id="af-shortcut-link" class="af-shortcut-link">настроить</a>
+    </div>
+
     <div id="af-status" class="af-status"></div>
 
     <div id="af-essay-panel" class="af-essay-panel hidden">

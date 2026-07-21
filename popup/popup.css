@@ -93,6 +93,121 @@ body {
   margin-bottom: 10px;
 }
 
+/* --- Toggle: автопоиск --- */
+
+.af-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: white;
+  border: 1px solid #e1e4ea;
+  border-radius: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+.af-toggle-row:hover {
+  border-color: #d0d5de;
+}
+
+.af-toggle-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.af-toggle-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2430;
+}
+
+.af-toggle-sub {
+  font-size: 11px;
+  color: #8a93a6;
+}
+
+.af-toggle-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.af-toggle-track {
+  position: relative;
+  flex-shrink: 0;
+  width: 40px;
+  height: 22px;
+  background: #dfe2e8;
+  border-radius: 999px;
+  transition: background 0.15s ease;
+}
+.af-toggle-track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  background: white;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(20, 30, 60, 0.2);
+  transition: transform 0.15s ease;
+}
+.af-toggle-input:checked + .af-toggle-track {
+  background: #2f6fed;
+}
+.af-toggle-input:checked + .af-toggle-track::after {
+  transform: translateX(18px);
+}
+.af-toggle-input:focus-visible + .af-toggle-track {
+  outline: 2px solid #2f6fed;
+  outline-offset: 2px;
+}
+
+.af-shortcut-hint {
+  font-size: 11px;
+  color: #8a93a6;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+
+.af-shortcut-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.af-shortcut-hint kbd {
+  display: inline-block;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  color: #1f2430;
+  background: #eef0f4;
+  border: 1px solid #dfe2e8;
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  padding: 1px 6px;
+}
+
+.af-shortcut-link {
+  color: #2f6fed;
+  text-decoration: none;
+  font-weight: 500;
+}
+.af-shortcut-link:hover {
+  text-decoration: underline;
+}
+
 .af-btn {
   border: none;
   border-radius: 8px;
