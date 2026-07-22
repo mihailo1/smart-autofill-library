@@ -47,28 +47,40 @@ Remembers your answers as you type them, matches them to new forms with rules fi
 ## 🧩 How it works
 
 ```
-┌─────────────┐   scan    ┌──────────────────┐
-│   Web page  │ ────────▶ │  fieldDetector   │  detects fields, guesses concepts,
-└─────────────┘           └──────────────────┘  flags resume uploads & essay questions
-       ▲                           │
-       │ fill                      ▼
-       │                  ┌──────────────────┐   rules first  ┌──────────────┐
-       └───────────────── │      popup       │ ─────────────▶ │   matcher    │
-                          │  (orchestrator)  │                └──────────────┘
-                          └──────────────────┘                       │ unmatched
-                                   │                                  ▼
-                                   │                          ┌──────────────┐
-                                   └────────────────────────▶ │ geminiClient │
-                                        essay / fallback       └──────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                         Web page                             │
+│  ┌──────────────┐      ┌──────────────────────────────────┐  │
+│  │  hint / toast│◄─────│  content-script + fieldDetector  │  │
+│  └──────────────┘      └──────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────┘
+         ▲                                        ▲
+         │  fill / toast                          │  scan / apply
+         │                                        │
+┌──────────────────────┐                 ┌──────────────────────┐
+│  background worker   │                 │        popup         │
+│  (shortcuts + hint)  │                 │  (orchestrator UI)   │
+└──────────────────────┘                 └──────────────────────┘
+         │                                        │
+         └────────────────┬───────────────────────┘
+                          ▼
+              ┌──────────────────────┐
+              │   autofillEngine     │
+              └──────────────────────┘
+                 │              │
+        rules first    Gemini fallback
+                 ▼              ▼
+          ┌──────────┐  ┌──────────────┐
+          │ matcher  │  │ geminiClient │
+          └──────────┘  └──────────────┘
 ```
 
 - **`lib/fieldDetector.js`** — the only code that touches the page DOM: scans fields, guesses concepts, detects resume uploads and essay-style questions, and applies values.
 - **`lib/matcher.js`** + **`lib/conceptVocabulary.js`** — fast, free, offline rule matching against a vocabulary of common concepts.
 - **`lib/geminiClient.js`** — fallback matching, field classification, and essay-answer generation via the Gemini API.
-- **`lib/autofillEngine.js`** — shared fill pipeline (rules → Gemini → apply → default resume) used by the background shortcut.
+- **`lib/autofillEngine.js`** — shared fill pipeline (rules → Gemini → apply → default resume) used by both the popup and the background worker.
 - **`lib/storage.js`** — thin wrapper over `chrome.storage.local` for the library, settings, and resumes.
 - **`lib/resumeParser.js`** (+ `vendor/` pdf.js & mammoth) — extracts text from PDF/DOCX resumes.
-- **`background/`** — service worker for the keyboard command and fill requests from the page hint.
+- **`background/`** — service worker for the keyboard commands and fill requests from the page hint.
 - **`content/`** — content script: DOM IO, auto-search observer, floating hint + toast.
 - **`popup/`** — the orchestrator UI. **`options/`** — settings, resumes, context, and the saved-field library.
 
@@ -79,6 +91,10 @@ Everything is local. When Gemini is used, only **field metadata** (name/id/label
 ## ⚙️ Tech
 
 Manifest V3 · vanilla JS (no build step) · Gemini API · pdf.js · mammoth.js
+
+## 🧑‍💻 For developers
+
+See [`AGENTS.md`](./AGENTS.md) for architecture decisions, conventions, and guidelines for AI agents working on this repo.
 
 ## 📝 License
 
