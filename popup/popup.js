@@ -1,7 +1,7 @@
-// Popup: оркестрирует сканирование страницы, сопоставление с библиотекой (правила + Gemini
-// fallback), генерацию ответов на вопросы вакансий и реальную подстановку файла резюме в
-// поле загрузки. Все обращения к chrome.storage/Gemini API идут прямо отсюда — отдельный
-// background service worker не нужен для этой лёгкой логики.
+// Popup: orchestrates page scanning, matching against the library (rules + Gemini fallback),
+// generating answers to job application questions, and actually placing a resume file into the
+// upload field. All chrome.storage/Gemini API calls go directly from here — no separate
+// background service worker needed for this lightweight logic.
 
 const statusEl = document.getElementById("af-status");
 const autofillBtn = document.getElementById("af-autofill-btn");
@@ -19,9 +19,9 @@ const resumeMenuEl = document.getElementById("af-resume-menu");
 const resumeMenuListEl = document.getElementById("af-resume-menu-list");
 const resumeMenuTitleEl = document.getElementById("af-resume-menu-title");
 
-// Резюме, выбранное в текущем сеансе автозаполнения. Хранится на уровне модуля (а не в
-// замыкании renderEssayPanel), чтобы обработчик ✨ читал его в момент клика — иначе при
-// повторной перерисовке панели терялись бы уже введённые/сгенерированные ответы.
+// Resume chosen in the current autofill session. Stored at module level (not in a closure)
+// so the ✨ handler reads it on click — otherwise re-rendering the panel would lose
+// already typed/generated answers.
 let afChosenResume = null;
 
 document.getElementById("af-open-options").addEventListener("click", () => {
@@ -31,8 +31,8 @@ document.getElementById("af-preview-close").addEventListener("click", hidePrevie
 document.getElementById("af-preview-cancel").addEventListener("click", hidePreview);
 document.getElementById("af-essay-close").addEventListener("click", hideEssayPanel);
 document.getElementById("af-essay-cancel").addEventListener("click", hideEssayPanel);
-// Кнопку закрытия меню резюме навешивает сам pickResume (там она резолвит промис в null),
-// поэтому глобальный обработчик здесь не нужен.
+// Resume menu close button is attached by pickResume itself (resolves the promise to null),
+// so no global handler needed here.
 
 function setStatus(text) {
   statusEl.textContent = text;
@@ -46,7 +46,7 @@ async function clearPopupState() {
   try {
     await new Promise((res) => chrome.storage.local.remove(["af_last_preview", "af_last_essay"], res));
   } catch (err) {
-    console.warn("Не удалось очистить временное состояние попапа", err);
+    console.warn("Failed to clear popup temp state", err);
   }
 }
 
@@ -76,7 +76,7 @@ async function scanPage(tabId) {
   try {
     return await chrome.tabs.sendMessage(tabId, { type: "AF_SCAN_FIELDS" });
   } catch (e) {
-    throw new Error("Не удалось получить доступ к странице. Обновите страницу и попробуйте снова.");
+    throw new Error("Could not access the page. Please refresh and try again.");
   }
 }
 
@@ -92,12 +92,12 @@ function afSlugFromField(field) {
 async function refreshLibraryCount() {
   const library = await afGetLibrary();
   const count = Object.keys(library.entries).length;
-  libraryCountEl.textContent = count > 0 ? `В библиотеке: ${count} полей` : "Библиотека пуста";
+  libraryCountEl.textContent = count > 0 ? `Library: ${count} fields` : "Library is empty";
 }
 
-// --- Меню выбора резюме (появляется по клику "Автозаполнить", если есть что выбирать) ---
+// --- Resume picker menu (appears on "Autofill" click if there's something to choose) ---
 
-// Показывает меню и резолвит выбранный resume-объект (или null, если резюме нет/меню закрыли).
+// Shows the menu and resolves the selected resume object (or null if none/menu closed).
 function pickResume(settings, title) {
   return new Promise((resolve) => {
     const resumes = settings.resumes || [];
@@ -106,8 +106,8 @@ function pickResume(settings, title) {
       .map(
         (r) => `
         <button class="af-resume-menu-item" data-id="${escapeAttr(r.id)}">
-          <span class="af-resume-menu-name">${escapeAttr(r.name || r.fileName || "Резюме")}</span>
-          ${r.id === settings.defaultResumeId ? '<span class="af-resume-menu-default">по умолчанию</span>' : ""}
+          <span class="af-resume-menu-name">${escapeAttr(r.name || r.fileName || "Resume")}</span>
+          ${r.id === settings.defaultResumeId ? '<span class="af-resume-menu-default">default</span>' : ""}
         </button>
       `
       )
@@ -137,13 +137,13 @@ function pickResume(settings, title) {
   });
 }
 
-// --- Автозаполнение ---
+// --- Autofill ---
 
 autofillBtn.addEventListener("click", async () => {
   autofillBtn.disabled = true;
   hideEssayPanel();
   hideResumeMenu();
-  setStatus("Сканирую страницу...");
+  setStatus("Scanning page...");
   try {
     const tab = await getActiveTab();
     const scanResult = await scanPage(tab.id);
@@ -151,7 +151,7 @@ autofillBtn.addEventListener("click", async () => {
     const resumeUploadFields = scanResult.resumeUploadFields || [];
 
     if (allFields.length === 0 && resumeUploadFields.length === 0) {
-      setStatus("На странице не найдено подходящих полей.");
+      setStatus("No fillable fields found on this page.");
       return;
     }
 
@@ -163,9 +163,9 @@ autofillBtn.addEventListener("click", async () => {
     let filledCount = 0;
     let usedGemini = false;
 
-    // Сопоставляем с библиотекой ВСЕ поля (включая "вопросы вакансии") — сохранённый ответ
-    // всегда имеет приоритет над генерацией. Только те essay-поля, для которых в библиотеке
-    // ничего не нашлось, отправятся ниже в панель ✨.
+    // Match ALL fields against the library (including essay questions) — a saved answer
+    // always takes priority over generation. Only essay fields with no library match
+    // go to the ✨ panel below.
     afChosenResume = null;
     const filledAfIds = new Set();
 
@@ -174,7 +174,7 @@ autofillBtn.addEventListener("click", async () => {
       const mapping = { ...ruleResult.mapping };
 
       if (settings.useGeminiFallback && settings.geminiApiKey && ruleResult.unmatched.length > 0) {
-        setStatus("Сопоставляю оставшиеся поля через Gemini...");
+        setStatus("Matching remaining fields via Gemini...");
         try {
           const geminiMatches = await afCallGeminiForMatching(ruleResult.unmatched, library, settings);
           geminiMatches.forEach(({ afId, libraryKey }) => {
@@ -186,7 +186,7 @@ autofillBtn.addEventListener("click", async () => {
           });
         } catch (e) {
           console.warn("Gemini matching failed", e);
-          setStatus(`Gemini недоступен (${e.message}), использую только правила.`);
+          setStatus(`Gemini unavailable (${e.message}), using rules only.`);
         }
       }
 
@@ -197,7 +197,7 @@ autofillBtn.addEventListener("click", async () => {
       }
     }
 
-    // В панель ✨ идут только те вопросы вакансии, для которых в библиотеке не нашлось ответа.
+    // Only unanswered essay questions go to the ✨ panel.
     const essayFieldsToGenerate = essayFields.filter((f) => !filledAfIds.has(f.afId));
     if (essayFieldsToGenerate.length > 0) {
       try {
@@ -208,24 +208,24 @@ autofillBtn.addEventListener("click", async () => {
     }
 
     let statusLines = [
-      `Заполнено полей: ${filledCount} из ${allFields.length}.` + (usedGemini ? " (Gemini помог с частью полей)" : ""),
+      `Filled ${filledCount} of ${allFields.length} fields.` + (usedGemini ? " (Gemini helped with some fields)" : ""),
     ];
 
-    // Резюме нужно только если на странице есть либо поле загрузки файла резюме, либо
-    // вопросы вакансии без готового ответа (для них полезен текст резюме) — и только если резюме загружены.
+    // Resume is only needed if the page has a resume upload field or unanswered essay
+    // questions (resume text is useful for those) — and only if resumes are uploaded.
     const needsResume = (resumeUploadFields.length > 0 || essayFieldsToGenerate.length > 0) && (settings.resumes || []).length > 0;
 
     if (needsResume) {
       const title =
         resumeUploadFields.length > 0
-          ? "Выберите резюме — файл будет подставлен на страницу"
-          : "Выберите резюме для генерации ответов";
+          ? "Select resume — file will be placed on the page"
+          : "Select resume for generating answers";
       afChosenResume = await pickResume(settings, title);
     }
 
     if (resumeUploadFields.length > 0) {
       if (!afChosenResume && (settings.resumes || []).length === 0) {
-        statusLines.push("На странице есть поле загрузки резюме, но резюме не загружены (добавьте в настройках).");
+        statusLines.push("Resume upload field found on page, but no resumes uploaded (add in settings).");
       } else if (afChosenResume) {
         let placedCount = 0;
         for (const field of resumeUploadFields) {
@@ -238,38 +238,38 @@ autofillBtn.addEventListener("click", async () => {
           });
           if (result.ok) placedCount += 1;
         }
-        statusLines.push(`Файл резюме подставлен в поле(я): ${placedCount} из ${resumeUploadFields.length}.`);
+        statusLines.push(`Resume file placed in ${placedCount} of ${resumeUploadFields.length} field(s).`);
       } else {
-        statusLines.push("Выбор резюме отменён — файл не подставлен.");
+        statusLines.push("Resume selection cancelled — file not placed.");
       }
     }
 
     setStatus(statusLines.join("\n"));
 
-    // Панель вопросов уже отрендерена выше; здесь только дополняем статус. Обработчик ✨
-    // сам возьмёт актуальное afChosenResume — повторно перерисовывать (и терять ответы) не нужно.
+    // Essay panel already rendered above; just append status. The ✨ handler reads
+    // the current afChosenResume — no need to re-render (and lose answers).
     if (essayFieldsToGenerate.length > 0) {
-      setStatus(statusEl.textContent + `\nВопросов без готового ответа: ${essayFieldsToGenerate.length} — сгенерируйте через ✨.`);
+      setStatus(statusEl.textContent + `\nUnanswered questions: ${essayFieldsToGenerate.length} — generate via ✨.`);
     }
   } catch (e) {
-    setStatus(`Ошибка: ${e.message}`);
+    setStatus(`Error: ${e.message}`);
   } finally {
     autofillBtn.disabled = false;
   }
 });
 
-// --- Сохранение в библиотеку ---
+// --- Save to library ---
 
 scanSaveBtn.addEventListener("click", async () => {
   scanSaveBtn.disabled = true;
-  setStatus("Сканирую страницу...");
+  setStatus("Scanning page...");
   try {
     const tab = await getActiveTab();
     const scanResult = await scanPage(tab.id);
     const fields = (scanResult.fields || []).filter((f) => !f.isEssay && (f.value || "").trim() !== "");
 
     if (fields.length === 0) {
-      setStatus("Не найдено заполненных полей на странице.");
+      setStatus("No filled fields found on this page.");
       return;
     }
 
@@ -277,7 +277,7 @@ scanSaveBtn.addEventListener("click", async () => {
     const unclassified = fields.filter((f) => !f.guessedConcept);
     let suggestions = [];
     if (settings.useGeminiFallback && settings.geminiApiKey && unclassified.length > 0) {
-      setStatus("Классифицирую поля через Gemini...");
+      setStatus("Classifying fields via Gemini...");
       try {
         suggestions = await afCallGeminiForClassification(unclassified, settings);
       } catch (e) {
@@ -296,14 +296,14 @@ scanSaveBtn.addEventListener("click", async () => {
         field.label ||
         field.placeholder ||
         field.name ||
-        "Поле";
+        "Field";
       return { afId: field.afId, key, label, value: field.value, sourceType: field.type };
     });
 
     await renderPreview(previewItems, tab.url);
-    setStatus(`Найдено полей: ${previewItems.length}. Проверьте и сохраните.`);
+    setStatus(`Found ${previewItems.length} fields. Review and save.`);
   } catch (e) {
-    setStatus(`Ошибка: ${e.message}`);
+    setStatus(`Error: ${e.message}`);
   } finally {
     scanSaveBtn.disabled = false;
   }
@@ -323,17 +323,17 @@ async function renderPreview(items, sourceUrl) {
     row.innerHTML = `
       <div class="af-field-card-top">
         <input type="checkbox" ${shouldBeChecked ? 'checked' : ''} data-idx="${idx}" class="af-row-check" />
-        <input type="text" class="af-field-label" value="${escapeAttr(item.label)}" data-field="label" data-idx="${idx}" placeholder="Название поля" />
+        <input type="text" class="af-field-label" value="${escapeAttr(item.label)}" data-field="label" data-idx="${idx}" placeholder="Field name" />
         <span class="af-type-badge">${escapeAttr(item.sourceType)}</span>
       </div>
       <div class="af-field-card-body">
         <div class="af-field-group">
-          <label class="af-mini-label">Ключ</label>
-          <input type="text" class="af-field-key" value="${escapeAttr(item.key)}" data-field="key" data-idx="${idx}" placeholder="Ключ (латиницей)" />
+          <label class="af-mini-label">Key</label>
+          <input type="text" class="af-field-key" value="${escapeAttr(item.key)}" data-field="key" data-idx="${idx}" placeholder="Key (latin)" />
         </div>
         <div class="af-field-group">
-          <label class="af-mini-label">Значение</label>
-          <input type="text" class="af-field-value" value="${escapeAttr(item.value)}" data-field="value" data-idx="${idx}" placeholder="Значение" />
+          <label class="af-mini-label">Value</label>
+          <input type="text" class="af-field-value" value="${escapeAttr(item.value)}" data-field="value" data-idx="${idx}" placeholder="Value" />
         </div>
       </div>
     `;
@@ -394,17 +394,17 @@ document.getElementById("af-preview-confirm").addEventListener("click", async ()
     .map((item) => ({ key: item.key, label: item.label, value: item.value, sourceUrl }));
 
   if (entriesToSave.length === 0) {
-    setStatus("Ничего не выбрано для сохранения.");
+    setStatus("Nothing selected to save.");
     return;
   }
 
   await afSaveEntries(entriesToSave);
   hidePreview();
-  setStatus(`Сохранено полей: ${entriesToSave.length}.`);
+  setStatus(`Saved ${entriesToSave.length} fields.`);
   refreshLibraryCount();
 });
 
-// --- Вопросы вакансии (essay) ---
+// --- Job application questions (essay) ---
 
 function renderEssayPanel(essayFields) {
   essayListEl.innerHTML = "";
@@ -413,17 +413,17 @@ function renderEssayPanel(essayFields) {
     const item = document.createElement("div");
     item.className = "af-essay-item";
     item.dataset.afid = field.afId;
-    const question = field.label || field.placeholder || field.ariaLabel || field.question || "Вопрос анкеты";
+    const question = field.label || field.placeholder || field.ariaLabel || field.question || "Application question";
     item.dataset.question = question;
     item.innerHTML = `
       <div class="af-essay-header">
         <span class="af-essay-question">${escapeAttr(question)}</span>
         <div class="af-essay-btn-group">
-          <button class="af-sparkle-btn af-context-btn" data-afid="${escapeAttr(field.afId)}" title="Сохранить вопрос и ответ в контекст">🧠</button>
-          <button class="af-sparkle-btn" data-afid="${escapeAttr(field.afId)}" title="Сгенерировать ответ">✨</button>
+          <button class="af-sparkle-btn af-context-btn" data-afid="${escapeAttr(field.afId)}" title="Save question and answer to context">🧠</button>
+          <button class="af-sparkle-btn" data-afid="${escapeAttr(field.afId)}" title="Generate answer">✨</button>
         </div>
       </div>
-      <textarea class="af-essay-answer" data-afid="${escapeAttr(field.afId)}" rows="4" placeholder="Ответ появится здесь после генерации, или впишите вручную...">${escapeAttr(field.value || '')}</textarea>
+      <textarea class="af-essay-answer" data-afid="${escapeAttr(field.afId)}" rows="4" placeholder="Answer will appear here after generation, or type manually...">${escapeAttr(field.value || '')}</textarea>
     `;
     essayListEl.appendChild(item);
   });
@@ -455,7 +455,7 @@ function renderEssayPanel(essayFields) {
       const answer = textarea.value.trim();
 
       if (!answer) {
-        setStatus("Сначала впишите или сгенерируйте ответ, чтобы сохранить его в контекст.");
+        setStatus("Type or generate an answer first, then save it to context.");
         return;
       }
 
@@ -487,7 +487,7 @@ function renderEssayPanel(essayFields) {
 
       const settings = await afGetSettings();
       if (!settings.geminiApiKey) {
-        setStatus("Укажите Gemini API-ключ в настройках, чтобы генерировать ответы.");
+        setStatus("Set your Gemini API key in settings to generate answers.");
         return;
       }
 
@@ -507,7 +507,7 @@ function renderEssayPanel(essayFields) {
         textarea.value = answer;
         await persistEssayState();
       } catch (err) {
-        setStatus(`Ошибка генерации: ${err.message}`);
+        setStatus(`Generation error: ${err.message}`);
       } finally {
         sparkleBtn.disabled = false;
         sparkleBtn.classList.remove("af-loading");
@@ -534,21 +534,21 @@ document.getElementById("af-essay-apply").addEventListener("click", async () => 
   });
 
   if (Object.keys(mapping).length === 0) {
-    setStatus("Нет ответов для вставки.");
+    setStatus("No answers to insert.");
     return;
   }
 
   try {
     const tab = await getActiveTab();
     const applyResult = await chrome.tabs.sendMessage(tab.id, { type: "AF_APPLY_VALUES", mapping });
-    setStatus(`Вставлено ответов: ${applyResult.filledCount}.`);
+    setStatus(`Inserted ${applyResult.filledCount} answer(s).`);
     hideEssayPanel();
   } catch (e) {
-    setStatus(`Ошибка: ${e.message}`);
+    setStatus(`Error: ${e.message}`);
   }
 });
 
-// --- Автопоиск + шорткат ---
+// --- Auto-search + shortcuts ---
 
 autoSearchInput.addEventListener("change", async () => {
   const settings = await afGetSettings();
@@ -556,8 +556,8 @@ autoSearchInput.addEventListener("change", async () => {
   await afSetSettings(settings);
   setStatus(
     autoSearchInput.checked
-      ? "Автопоиск включён — на страницах с полями появится хинт."
-      : "Автопоиск выключен."
+      ? "Auto-search enabled — hint will appear on pages with fields."
+      : "Auto-search disabled."
   );
 });
 
@@ -578,8 +578,8 @@ function afSetShortcutLabel(el, shortcut) {
     el.textContent = shortcut;
     el.title = "";
   } else {
-    el.textContent = "не задан";
-    el.title = "Назначьте комбинацию на странице шорткатов Chrome";
+    el.textContent = "not set";
+    el.title = "Assign a shortcut on the Chrome shortcuts page";
   }
 }
 
@@ -608,13 +608,13 @@ async function loadShortcutLabel() {
 
     if (previewValid && res.af_last_preview.items && res.af_last_preview.items.length > 0) {
       await renderPreview(res.af_last_preview.items, res.af_last_preview.sourceUrl || "");
-      setStatus(`Восстановлено ${res.af_last_preview.items.length} полей из предыдущей сессии.`);
+      setStatus(`Restored ${res.af_last_preview.items.length} fields from previous session.`);
     }
 
     if (essayValid && res.af_last_essay.fields && res.af_last_essay.fields.length > 0) {
       const restored = res.af_last_essay.fields.map((f) => ({ afId: f.afId, label: f.question, value: f.value }));
       renderEssayPanel(restored);
-      setStatus((statusEl.textContent ? statusEl.textContent + "\n" : "") + `Восстановлены ответы на ${res.af_last_essay.fields.length} вопросов.`);
+      setStatus((statusEl.textContent ? statusEl.textContent + "\n" : "") + `Restored answers for ${res.af_last_essay.fields.length} question(s).`);
     }
 
     if ((res.af_last_preview && !previewValid) || (res.af_last_essay && !essayValid)) {

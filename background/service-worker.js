@@ -1,5 +1,5 @@
-// Background service worker: шорткаты и запросы от content-script / popup.
-// importScripts загружает общие модули (classic scripts, без ES modules).
+// Background service worker: keyboard shortcuts and requests from content-script / popup.
+// importScripts loads shared modules (classic scripts, no ES modules).
 
 importScripts(
   "../lib/storage.js",
@@ -14,10 +14,10 @@ const AF_COMMAND_SAVE = "af-save-library";
 
 async function afGetActiveTabId() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab || tab.id == null) throw new Error("Нет активной вкладки.");
-  // chrome:// и store страницы недоступны content-script'ам
+  if (!tab || tab.id == null) throw new Error("No active tab.");
+  // chrome:// and store pages are not accessible by content scripts
   if (tab.url && /^(chrome|chrome-extension|edge|about|devtools):/i.test(tab.url)) {
-    throw new Error("На этой странице расширение не работает.");
+    throw new Error("This extension doesn't work on this page.");
   }
   return tab.id;
 }
@@ -27,7 +27,7 @@ async function afToastError(err) {
     const tabId = await afGetActiveTabId();
     await chrome.tabs.sendMessage(tabId, {
       type: "AF_TOAST",
-      text: `Ошибка: ${err.message || err}`,
+      text: `Error: ${err.message || err}`,
       kind: "error",
     });
   } catch (_) {

@@ -1,94 +1,94 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Настройки Smart Autofill</title>
+  <title>Smart Autofill Settings</title>
   <link rel="stylesheet" href="options.css" />
 </head>
 <body>
   <div class="af-options">
-    <h1>Настройки Smart Autofill</h1>
+    <h1>Smart Autofill Settings</h1>
 
     <section class="af-card">
-      <h2>Автопоиск и шорткат</h2>
+      <h2>Auto-search and shortcuts</h2>
       <label class="af-checkbox">
         <input type="checkbox" id="af-auto-search" />
-        <span>Автопоиск полей на страницах (показывать хинт, когда есть что заполнить)</span>
+        <span>Auto-search fields on pages (show hint when there's something to fill)</span>
       </label>
       <p class="af-hint" style="margin-top: 0;">
-        Шорткаты работают <strong>всегда</strong>, даже если автопоиск выключен.
-        По умолчанию: заполнить <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd>,
-        сохранить в библиотеку <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>.
-        Комбинации можно сменить на
-        <a href="chrome://extensions/shortcuts" target="_blank" rel="noopener" id="af-open-shortcuts">странице шорткатов Chrome</a>.
+        Shortcuts work <strong>always</strong>, even when auto-search is off.
+        Default: fill <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd>,
+        save to library <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>.
+        You can change these on the
+        <a href="chrome://extensions/shortcuts" target="_blank" rel="noopener" id="af-open-shortcuts">Chrome shortcuts page</a>.
       </p>
       <p class="af-hint">
-        Заполнить: <strong id="af-shortcut-current">…</strong><br />
-        Сохранить: <strong id="af-save-shortcut-current">…</strong>
+        Fill: <strong id="af-shortcut-current">…</strong><br />
+        Save: <strong id="af-save-shortcut-current">…</strong>
       </p>
     </section>
 
     <section class="af-card">
       <h2>Gemini API</h2>
       <label class="af-field">
-        <span>API-ключ Gemini</span>
+        <span>Gemini API key</span>
         <input type="password" id="af-api-key" placeholder="AIza..." autocomplete="off" />
       </label>
       <label class="af-field">
-        <span>Модель</span>
+        <span>Model</span>
         <input type="text" id="af-model" placeholder="gemini-flash-lite-latest" />
       </label>
       <label class="af-checkbox">
         <input type="checkbox" id="af-use-gemini" />
-        <span>Использовать Gemini как fallback, когда правила не находят соответствие</span>
+        <span>Use Gemini as fallback when rules don't find a match</span>
       </label>
-      <button id="af-save-settings" class="af-btn af-btn-primary">Сохранить настройки</button>
+      <button id="af-save-settings" class="af-btn af-btn-primary">Save settings</button>
       <span id="af-settings-status" class="af-inline-status"></span>
       <p class="af-hint">
-        Ключ можно получить на
+        Get your key at
         <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.
-        Ключ хранится только локально в этом браузере (chrome.storage.local) и используется
-        только для запросов к Gemini API напрямую с вашего устройства.
+        The key is stored locally in this browser (chrome.storage.local) and used
+        only for direct requests to the Gemini API from your device.
       </p>
     </section>
 
     <section class="af-card">
-      <h2>Контекст о вашем опыте</h2>
+      <h2>Context about your experience</h2>
       <p class="af-hint" style="margin-top: 0;">
-        Опишите свободным текстом, кто вы, чем занимались, что вам интересно и как вы обычно
-        рассказываете о себе. Это будет использовано вместе с резюме, чтобы генерировать ответы
-        на сложные вопросы анкет вакансий (например "Why do you want to work here?") в вашем стиле.
+        Describe in free text who you are, what you've worked on, what interests you, and how you
+        usually talk about yourself. This will be used together with your resume to generate answers
+        to complex job application questions (like "Why do you want to work here?") in your style.
       </p>
-      <textarea id="af-context" class="af-textarea" rows="6" placeholder="Например: я фронтенд-разработчик с 4 годами опыта, люблю решать сложные UI-задачи, сейчас ищу продуктовую компанию с интересными пользовательскими проблемами..."></textarea>
-      <button id="af-save-context" class="af-btn af-btn-primary">Сохранить контекст</button>
+      <textarea id="af-context" class="af-textarea" rows="6" placeholder="Example: I'm a frontend developer with 4 years of experience, I enjoy solving complex UI challenges, and I'm currently looking for a product company with interesting user problems..."></textarea>
+      <button id="af-save-context" class="af-btn af-btn-primary">Save context</button>
       <span id="af-context-status" class="af-inline-status"></span>
     </section>
 
     <section class="af-card">
       <div class="af-card-header">
-        <h2>Резюме (файлы)</h2>
+        <h2>Resumes (files)</h2>
       </div>
       <p class="af-hint" style="margin-top: 0;">
-        Загрузите одно или несколько резюме в формате PDF или DOCX. При автозаполнении, если на
-        странице найдено поле загрузки резюме, в popup появится меню — выбранный файл будет
-        реально подставлен в это поле. Текст резюме также используется для генерации ответов на
-        вопросы вакансий. Резюме по умолчанию используется, если вы не выберете другое в меню.
+        Upload one or more resumes in PDF or DOCX format. When autofilling, if a resume upload
+        field is found on the page, a menu will appear in the popup — the selected file will be
+        placed directly into that field. Resume text is also used to generate answers to job
+        application questions. The default resume is used unless you select another from the menu.
       </p>
       <div class="af-upload-row">
         <input type="file" id="af-resume-file-input" accept=".pdf,.docx" class="af-file-input" />
         <span id="af-resume-upload-status" class="af-inline-status"></span>
       </div>
       <div id="af-resume-list" class="af-resume-list"></div>
-      <p id="af-resume-empty" class="af-hint hidden">Резюме ещё не загружены.</p>
+      <p id="af-resume-empty" class="af-hint hidden">No resumes uploaded yet.</p>
     </section>
 
     <section class="af-card">
       <div class="af-card-header">
-        <h2>Библиотека сохранённых полей</h2>
-        <button id="af-refresh-library" class="af-icon-btn" title="Обновить">↻</button>
+        <h2>Saved fields library</h2>
+        <button id="af-refresh-library" class="af-icon-btn" title="Refresh">↻</button>
       </div>
       <div id="af-library-list" class="af-library-list"></div>
-      <p id="af-library-empty" class="af-hint hidden">Библиотека пуста. Сохраните поля со страницы через popup расширения.</p>
+      <p id="af-library-empty" class="af-hint hidden">Library is empty. Save fields from a page via the extension popup.</p>
     </section>
 
     <footer class="af-version-footer">

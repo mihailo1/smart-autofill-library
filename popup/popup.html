@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <title>Smart Autofill Library</title>
@@ -9,26 +9,26 @@
   <div class="af-app">
     <header class="af-header">
       <h1>Smart Autofill</h1>
-      <button id="af-open-options" class="af-icon-btn" title="Настройки">⚙️</button>
+      <button id="af-open-options" class="af-icon-btn" title="Settings">⚙️</button>
     </header>
 
     <div id="af-resume-menu" class="af-resume-menu hidden">
       <div class="af-preview-header">
-        <span id="af-resume-menu-title">Выберите резюме</span>
+        <span id="af-resume-menu-title">Select resume</span>
         <button id="af-resume-menu-close" class="af-icon-btn">✕</button>
       </div>
       <div id="af-resume-menu-list" class="af-resume-menu-list"></div>
     </div>
 
     <div class="af-actions">
-      <button id="af-autofill-btn" class="af-btn af-btn-primary">⚡ Автозаполнить</button>
-      <button id="af-scan-save-btn" class="af-btn af-btn-secondary">💾 Сохранить в библиотеку</button>
+      <button id="af-autofill-btn" class="af-btn af-btn-primary">⚡ Autofill</button>
+      <button id="af-scan-save-btn" class="af-btn af-btn-secondary">💾 Save to library</button>
     </div>
 
-    <label class="af-toggle-row" title="На страницах с формами появится подсказка">
+    <label class="af-toggle-row" title="A hint will appear on pages with forms">
       <span class="af-toggle-text">
-        <span class="af-toggle-title">Автопоиск полей</span>
-        <span class="af-toggle-sub">Хинт на страницах, где есть поля</span>
+        <span class="af-toggle-title">Auto-search fields</span>
+        <span class="af-toggle-sub">Hint on pages with fillable fields</span>
       </span>
       <input type="checkbox" id="af-auto-search" class="af-toggle-input" />
       <span class="af-toggle-track" aria-hidden="true"></span>
@@ -36,37 +36,37 @@
 
     <div class="af-shortcut-hint" id="af-shortcut-hint">
       <div class="af-shortcut-line">
-        Заполнить: <kbd id="af-shortcut-label">Alt+Shift+A</kbd>
+        Fill: <kbd id="af-shortcut-label">Alt+Shift+A</kbd>
       </div>
       <div class="af-shortcut-line">
-        Сохранить: <kbd id="af-save-shortcut-label">Alt+Shift+S</kbd>
+        Save: <kbd id="af-save-shortcut-label">Alt+Shift+S</kbd>
       </div>
-      <a href="#" id="af-shortcut-link" class="af-shortcut-link">настроить</a>
+      <a href="#" id="af-shortcut-link" class="af-shortcut-link">configure</a>
     </div>
 
     <div id="af-status" class="af-status"></div>
 
     <div id="af-essay-panel" class="af-essay-panel hidden">
       <div class="af-preview-header">
-        <span>Вопросы вакансии — сгенерируйте ответы с помощью ✨</span>
+        <span>Job questions — generate answers with ✨</span>
         <button id="af-essay-close" class="af-icon-btn">✕</button>
       </div>
       <div id="af-essay-list" class="af-essay-list"></div>
       <div class="af-preview-footer">
-        <button id="af-essay-cancel" class="af-btn af-btn-secondary">Отмена</button>
-        <button id="af-essay-apply" class="af-btn af-btn-primary">Вставить на страницу</button>
+        <button id="af-essay-cancel" class="af-btn af-btn-secondary">Cancel</button>
+        <button id="af-essay-apply" class="af-btn af-btn-primary">Insert on page</button>
       </div>
     </div>
 
     <div id="af-preview" class="af-preview hidden">
       <div class="af-preview-header">
-        <span>Найденные поля — отметьте, что сохранить</span>
+        <span>Fields found — select what to save</span>
         <button id="af-preview-close" class="af-icon-btn">✕</button>
       </div>
       <div id="af-preview-list" class="af-preview-list"></div>
       <div class="af-preview-footer">
-        <button id="af-preview-cancel" class="af-btn af-btn-secondary">Отмена</button>
-        <button id="af-preview-confirm" class="af-btn af-btn-primary">Сохранить выбранное</button>
+        <button id="af-preview-cancel" class="af-btn af-btn-secondary">Cancel</button>
+        <button id="af-preview-confirm" class="af-btn af-btn-primary">Save selected</button>
       </div>
     </div>
 

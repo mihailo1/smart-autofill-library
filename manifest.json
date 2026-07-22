@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Smart Autofill Library",
   "version": "1.2.0",
-  "description": "Запоминает, как вы заполняете поля на сайтах, и автоматически заполняет их в следующий раз. Использует Gemini API для умного сопоставления полей.",
+  "description": "Remembers how you fill out forms on websites and automatically fills them next time. Uses Gemini API for smart field matching.",
   "permissions": [
     "storage",
     "unlimitedStorage",
@@ -21,14 +21,14 @@
         "default": "Alt+Shift+A",
         "mac": "Alt+Shift+A"
       },
-      "description": "Автозаполнить поля формы из библиотеки"
+      "description": "Autofill form fields from library"
     },
     "af-save-library": {
       "suggested_key": {
         "default": "Alt+Shift+S",
         "mac": "Alt+Shift+S"
       },
-      "description": "Сохранить заполненные поля страницы в библиотеку"
+      "description": "Save filled fields from page to library"
     }
   },
   "action": {

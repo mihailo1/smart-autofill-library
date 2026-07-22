@@ -1,5 +1,5 @@
-// Content script: DOM-сканирование, автопоиск полей, плавающий хинт, toast, apply.
-// Сообщения от popup / background; сам не ходит в сеть и не читает значения библиотеки.
+// Content script: DOM scanning, auto-search, floating hint, toast, apply.
+// Messages from popup / background; does not access network or read library values.
 
 const AF_HINT_HOST_ID = "af-smart-hint-host";
 const AF_TOAST_HOST_ID = "af-smart-toast-host";
@@ -12,7 +12,7 @@ let afLastFieldCount = 0;
 let afShortcutLabel = "Alt+Shift+A";
 let afHintDismissedForUrl = "";
 
-// --- Сообщения ---
+// --- Messages ---
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "AF_SCAN_FIELDS") {
@@ -80,8 +80,8 @@ function afRunAutoScan() {
 
   try {
     const { fields, resumeUploadFields } = afCollectFields();
-    // Считаем только пустые поля — уже заполненные не должны держать хинт.
-    // Пустые essay тоже считаем — пользователю полезно знать, что форма есть.
+    // Count only empty fields — pre-filled fields shouldn't keep the hint visible.
+    // Empty essay fields count too — useful to know the form exists.
     const emptyFields = (fields || []).filter((f) => !(f.value || "").trim());
     const count = emptyFields.length + (resumeUploadFields || []).length;
     afLastFieldCount = count;
@@ -100,7 +100,7 @@ function afStartObserving() {
   if (afObserver) return;
   afObserver = new MutationObserver(() => afScheduleScan());
   if (document.documentElement) {
-    // Только структура DOM — атрибуты на больших SPA слишком шумные.
+    // Only DOM structure — attributes on large SPAs are too noisy.
     afObserver.observe(document.documentElement, {
       childList: true,
       subtree: true,
@@ -127,7 +127,7 @@ function afOnVisibility() {
   if (document.visibilityState === "visible") afScheduleScan();
 }
 
-// --- Hint UI (Shadow DOM, чтобы не ломать стили страницы) ---
+// --- Hint UI (Shadow DOM to avoid breaking page styles) ---
 
 function afEnsureHintHost() {
   let host = document.getElementById(AF_HINT_HOST_ID);
@@ -199,11 +199,11 @@ function afEnsureHintHost() {
     <div class="wrap" part="wrap">
       <span class="icon">⚡</span>
       <div class="text">
-        <div class="title" id="title">Поля для автозаполнения</div>
+        <div class="title" id="title">Autofill fields</div>
         <div class="sub" id="sub"></div>
       </div>
-      <button class="fill-btn" id="fill" type="button">Заполнить</button>
-      <button class="close" id="close" type="button" title="Скрыть">✕</button>
+      <button class="fill-btn" id="fill" type="button">Fill</button>
+      <button class="close" id="close" type="button" title="Hide">✕</button>
     </div>
   `;
 
@@ -223,27 +223,19 @@ function afShowHint(count, fields, resumeUploadFields) {
   const host = afEnsureHintHost();
   const shadow = host.shadowRoot;
 
-  let title = `${count} ${afPluralFields(count)} для автозаполнения`;
+  let title = `${count} ${count === 1 ? "field" : "fields"} to autofill`;
   if ((resumeUploadFields || []).length > 0) {
-    title += " · резюме";
+    title += " · resume";
   }
 
   shadow.getElementById("title").textContent = title;
-  shadow.getElementById("sub").textContent = `Шорткат: ${afShortcutLabel || "не задан"}`;
+  shadow.getElementById("sub").textContent = `Shortcut: ${afShortcutLabel || "not set"}`;
   host.style.display = "block";
 }
 
 function afHideHint() {
   const host = document.getElementById(AF_HINT_HOST_ID);
   if (host) host.style.display = "none";
-}
-
-function afPluralFields(n) {
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) return "поле";
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "поля";
-  return "полей";
 }
 
 async function afTriggerAutofillFromHint() {
@@ -260,16 +252,16 @@ async function afTriggerAutofillFromHint() {
       notifyPage: true,
     });
     if (!response?.ok) {
-      afShowToast(response?.error || "Ошибка автозаполнения", "error");
+      afShowToast(response?.error || "Autofill error", "error");
     }
   } catch (e) {
     afShowToast(e.message || String(e), "error");
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.textContent = "Заполнить";
+      btn.textContent = "Fill";
     }
-    // Пересканируем — часть полей уже заполнена, но хинт можно оставить.
+    // Re-scan — some fields are now filled, but hint may still be useful.
     afScheduleScan();
   }
 }
@@ -359,7 +351,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
 });
 
-// SPA navigations: soft URL change. Ватчер живёт только пока автопоиск включён.
+// SPA navigations: soft URL change. Watcher runs only while auto-search is enabled.
 let afNavIntervalId = null;
 let afLastHref = location.href;
 

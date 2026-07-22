@@ -52,7 +52,7 @@ filler/
 
 - `lib/autofillEngine.js` — single pipeline: scan → rules → Gemini → apply → resume
 - Used by both popup and background (no code duplication)
-- **Fill status denominator uses only empty fields** — honest "Заполнено X из Y" message
+- **Fill status denominator uses only empty fields** — honest "Filled X of Y fields" message
 - Exports functions to `self.*` for service worker scope
 
 ### Content script isolation
@@ -97,18 +97,21 @@ filler/
 
 ## Conventions
 
-- **Comments:** Russian
+- **Comments:** English
 - **Identifiers:** English (camelCase for functions, kebab-case for files)
+- **User-facing strings:** English (status messages, UI labels, tooltips)
 - **Function prefix:** `af` for all extension functions (global scope in service worker/content script)
 - **Message types:** `AF_*` (e.g., `AF_SCAN_FIELDS`, `AF_APPLY_VALUES`, `AF_TOAST`)
 - **No TypeScript, no build tools, no npm**
 - **No external dependencies** (except pdf.js and mammoth.js in `vendor/`)
+- **Concept vocabulary keywords:** include Russian terms for matching fields on Russian-language sites
 
 ## Current state
 
 - **Version:** 1.2.0
-- **Last commit:** Add auto-search hint, keyboard shortcuts, and background service worker
+- **Last commit:** Update architecture diagram and add AGENTS.md for AI agents
 - **Tree:** clean
+- **Language:** all code, comments, and UI strings in English
 
 ## Recommendations for future agents
 
@@ -121,7 +124,7 @@ filler/
 7. **Update this file after each commit** — keep decisions and state current
 8. **Test in browser** — no automated tests, so manually verify in Chrome DevTools
 9. **Check syntax with `node --check <file>`** — catches typos before commit
-10. **Use Russian comments, English identifiers** — match existing style
+10. **Use English comments and English UI strings** — match existing style (concept vocabulary keywords may include other languages for form matching)
 
 ## Known limitations
 

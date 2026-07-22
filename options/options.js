@@ -37,13 +37,13 @@ async function loadShortcutLabel() {
     const res = await chrome.runtime.sendMessage({ type: "AF_GET_COMMAND_SHORTCUT" });
     const autofill = res?.shortcut || res?.shortcuts?.autofill || "";
     const save = res?.saveShortcut || res?.shortcuts?.save || "";
-    shortcutCurrentEl.textContent = autofill || "не задан (chrome://extensions/shortcuts)";
+    shortcutCurrentEl.textContent = autofill || "not set (chrome://extensions/shortcuts)";
     if (saveShortcutCurrentEl) {
-      saveShortcutCurrentEl.textContent = save || "не задан (chrome://extensions/shortcuts)";
+      saveShortcutCurrentEl.textContent = save || "not set (chrome://extensions/shortcuts)";
     }
   } catch (e) {
-    shortcutCurrentEl.textContent = "Alt+Shift+A (по умолчанию)";
-    if (saveShortcutCurrentEl) saveShortcutCurrentEl.textContent = "Alt+Shift+S (по умолчанию)";
+    shortcutCurrentEl.textContent = "Alt+Shift+A (default)";
+    if (saveShortcutCurrentEl) saveShortcutCurrentEl.textContent = "Alt+Shift+S (default)";
   }
 }
 
@@ -63,7 +63,7 @@ saveSettingsBtn.addEventListener("click", async () => {
   settings.useGeminiFallback = useGeminiInput.checked;
   settings.autoSearchMode = autoSearchInput.checked;
   await afSetSettings(settings);
-  settingsStatusEl.textContent = "Сохранено ✓";
+  settingsStatusEl.textContent = "Saved ✓";
   setTimeout(() => (settingsStatusEl.textContent = ""), 2000);
 });
 
@@ -71,7 +71,7 @@ saveContextBtn.addEventListener("click", async () => {
   const settings = await afGetSettings();
   settings.contextText = contextInput.value;
   await afSetSettings(settings);
-  contextStatusEl.textContent = "Сохранено ✓";
+  contextStatusEl.textContent = "Saved ✓";
   setTimeout(() => (contextStatusEl.textContent = ""), 2000);
 });
 
@@ -95,7 +95,7 @@ async function loadLibrary() {
         <div class="af-key-label">${escapeAttr(key)}</div>
       </div>
       <input type="text" class="af-lib-value" value="${escapeAttr(entry.value)}" data-key="${escapeAttr(key)}" />
-      <button class="af-delete-btn" data-key="${escapeAttr(key)}">Удалить</button>
+      <button class="af-delete-btn" data-key="${escapeAttr(key)}">Delete</button>
     `;
     libraryListEl.appendChild(row);
   });
@@ -124,7 +124,7 @@ async function loadLibrary() {
 
 refreshLibraryBtn.addEventListener("click", loadLibrary);
 
-// --- Резюме (файлы PDF/DOCX) ---
+// --- Resumes (PDF/DOCX files) ---
 
 function afFileToBase64(file) {
   return new Promise((resolve, reject) => {
@@ -143,7 +143,7 @@ resumeFileInput.addEventListener("change", async (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
-  resumeUploadStatusEl.textContent = "Загружаю и извлекаю текст...";
+  resumeUploadStatusEl.textContent = "Uploading and extracting text...";
   try {
     const [dataBase64, extraction] = await Promise.all([
       afFileToBase64(file),
@@ -158,12 +158,12 @@ resumeFileInput.addEventListener("change", async (e) => {
       textContent: extraction.text || "",
     });
 
-    resumeUploadStatusEl.textContent = extraction.warning ? `Загружено (⚠ ${extraction.warning})` : "Загружено ✓";
+    resumeUploadStatusEl.textContent = extraction.warning ? `Uploaded (⚠ ${extraction.warning})` : "Uploaded ✓";
     setTimeout(() => (resumeUploadStatusEl.textContent = ""), extraction.warning ? 6000 : 2000);
     resumeFileInput.value = "";
     loadResumes();
   } catch (err) {
-    resumeUploadStatusEl.textContent = `Ошибка: ${err.message}`;
+    resumeUploadStatusEl.textContent = `Error: ${err.message}`;
   }
 });
 
@@ -181,14 +181,14 @@ async function loadResumes() {
       <div class="af-resume-item-top">
         <label class="af-radio">
           <input type="radio" name="af-default-resume" data-id="${escapeAttr(resume.id)}" ${isDefault ? "checked" : ""} />
-          <span>По умолчанию</span>
+          <span>Default</span>
         </label>
-        <button class="af-delete-btn" data-id="${escapeAttr(resume.id)}">Удалить</button>
+        <button class="af-delete-btn" data-id="${escapeAttr(resume.id)}">Delete</button>
       </div>
-      <input type="text" class="af-resume-name" value="${escapeAttr(resume.name)}" data-id="${escapeAttr(resume.id)}" placeholder="Название резюме (например «Frontend», «Продукт»)" />
+      <input type="text" class="af-resume-name" value="${escapeAttr(resume.name)}" data-id="${escapeAttr(resume.id)}" placeholder="Resume name (e.g. 'Frontend', 'Product')" />
       <div class="af-resume-file-meta">
-        📄 ${escapeAttr(resume.fileName || "файл")}
-        ${resume.textContent ? `<span class="af-resume-text-ok">текст извлечён (${resume.textContent.length} симв.)</span>` : `<span class="af-resume-text-warn">текст не извлечён</span>`}
+        📄 ${escapeAttr(resume.fileName || "file")}
+        ${resume.textContent ? `<span class="af-resume-text-ok">text extracted (${resume.textContent.length} chars)</span>` : `<span class="af-resume-text-warn">text not extracted</span>`}
       </div>
     `;
     resumeListEl.appendChild(row);
@@ -215,7 +215,7 @@ async function loadResumes() {
   });
 }
 
-// Версия берётся из манифеста, чтобы не поддерживать её в двух местах.
+// Version taken from manifest to avoid maintaining it in two places.
 const versionEl = document.getElementById("af-version");
 if (versionEl && typeof chrome !== "undefined" && chrome.runtime?.getManifest) {
   versionEl.textContent = `v${chrome.runtime.getManifest().version}`;
