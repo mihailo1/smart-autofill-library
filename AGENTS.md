@@ -148,8 +148,8 @@ Many job applications embed the real form in a **cross-origin iframe** (e.g. Gre
 
 ## Current state
 
-- **Version:** 1.4.0
-- **Last change:** UI redesign + Alt+Shift+F auto-search shortcut
+- **Version:** 1.4.1
+- **Last change:** Compact shortcut chips; auto-search shortcut only in bottom row
 - **Language:** all code, comments, and UI strings in English
 
 ## Recommendations for future agents

@@ -9,7 +9,6 @@ const scanSaveBtn = document.getElementById("af-scan-save-btn");
 const autoSearchInput = document.getElementById("af-auto-search");
 const shortcutLabelEl = document.getElementById("af-shortcut-label");
 const saveShortcutLabelEl = document.getElementById("af-save-shortcut-label");
-const autoSearchShortcutLabelEl = document.getElementById("af-auto-search-shortcut-label");
 const autoSearchShortcutChipEl = document.getElementById("af-auto-search-shortcut-chip");
 const shortcutLinkEl = document.getElementById("af-shortcut-link");
 const previewEl = document.getElementById("af-preview");
@@ -585,14 +584,13 @@ async function loadShortcutLabel() {
     const res = await chrome.runtime.sendMessage({ type: "AF_GET_COMMAND_SHORTCUT" });
     afSetShortcutLabel(shortcutLabelEl, res?.shortcut || res?.shortcuts?.autofill || "");
     afSetShortcutLabel(saveShortcutLabelEl, res?.saveShortcut || res?.shortcuts?.save || "");
-    const autoSearch =
-      res?.autoSearchShortcut || res?.shortcuts?.autoSearch || "";
-    afSetShortcutLabel(autoSearchShortcutLabelEl, autoSearch);
-    afSetShortcutLabel(autoSearchShortcutChipEl, autoSearch);
+    afSetShortcutLabel(
+      autoSearchShortcutChipEl,
+      res?.autoSearchShortcut || res?.shortcuts?.autoSearch || ""
+    );
   } catch (e) {
     if (shortcutLabelEl) shortcutLabelEl.textContent = "Alt+Shift+A";
     if (saveShortcutLabelEl) saveShortcutLabelEl.textContent = "Alt+Shift+S";
-    if (autoSearchShortcutLabelEl) autoSearchShortcutLabelEl.textContent = "Alt+Shift+F";
     if (autoSearchShortcutChipEl) autoSearchShortcutChipEl.textContent = "Alt+Shift+F";
   }
 }

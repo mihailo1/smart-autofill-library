@@ -260,27 +260,11 @@ body {
   font-size: 12.5px;
   font-weight: 600;
   color: var(--af-text);
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
 }
 
 .af-toggle-sub {
   font-size: 11px;
   color: var(--af-text-faint);
-}
-
-.af-kbd-inline {
-  font-family: inherit;
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--af-text-muted);
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid var(--af-border);
-  border-radius: 5px;
-  padding: 1px 5px;
-  line-height: 1.4;
 }
 
 .af-toggle-input {
@@ -329,32 +313,33 @@ body {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
   margin-bottom: 10px;
 }
 
 .af-shortcut-chip {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 7px;
-  border-radius: 8px;
+  gap: 4px;
+  padding: 3px 6px;
+  border-radius: 7px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--af-border);
+  min-height: 0;
 }
 
 .af-shortcut-label {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
   color: var(--af-text-faint);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
 }
 
 .af-shortcuts kbd,
 .af-shortcut-chip kbd {
   display: inline-block;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: inherit;
   font-size: 10px;
   font-weight: 600;
   color: var(--af-text-muted);
@@ -362,16 +347,18 @@ body {
   border: 1px solid var(--af-border);
   border-radius: 5px;
   padding: 1px 5px;
+  line-height: 1.3;
+  white-space: nowrap;
 }
 
 .af-shortcut-link {
   margin-left: auto;
   color: var(--af-accent);
   text-decoration: none;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
-  padding: 4px 6px;
-  border-radius: 6px;
+  padding: 2px 5px;
+  border-radius: 5px;
 }
 .af-shortcut-link:hover {
   background: var(--af-accent-soft);
