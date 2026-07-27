@@ -32,6 +32,18 @@ filler/
 
 ## Decisions
 
+### Multi-frame forms (v1.3.0)
+
+Many job applications embed the real form in a **cross-origin iframe** (e.g. Greenhouse on `job-boards.greenhouse.io` inside `fuga.com`). Top-document `querySelectorAll` cannot see those fields.
+
+- **`all_frames: true`** on content scripts — inject into every frame matching `<all_urls>`
+- **`webNavigation` permission** — `chrome.webNavigation.getAllFrames` lists frameIds
+- **`afScanTab` / `afApplyValuesOnTab` / `afPlaceFileOnTab`** in `autofillEngine.js` — fan-out messages with `{ frameId }`, attach `frameId` to each field metadata
+- **Top frame only** for hint/toast/auto-search UI (`window === window.top`); nested frames only answer scan/apply/place
+- **Auto-search** top frame calls background `AF_SCAN_TAB` so iframe fields count toward the hint
+- Nested frames (when auto-search on) notify `AF_FRAME_DOM_CHANGED` → top `AF_RESCAN_HINT`
+- Apply/essay restore must preserve **`frameId`** with each `afId` so values land in the right document
+
 ### Auto-search mode (v1.2.0)
 
 - **MutationObserver** on `childList + subtree` (not attributes, to reduce noise on SPAs)
@@ -41,12 +53,20 @@ filler/
 - **SPA navigation** detected via `setInterval` polling `location.href` (gated on `autoSearchMode`, not always running)
 - **Count only empty fields** — pre-filled fields don't inflate the hint count or keep it visible after filling
 
-### Keyboard shortcuts (v1.2.0)
+### Keyboard shortcuts (v1.2.0 / v1.4.0)
 
 - `Alt+Shift+A` — autofill from library
 - `Alt+Shift+S` — save filled fields to library (no preview)
+- `Alt+Shift+F` — toggle auto-search mode (v1.4.0)
 - Handled by background service worker via `chrome.commands.onCommand`
 - Service worker uses `importScripts` to load shared libs (MV3 classic scripts, no ES modules)
+
+### UI (v1.4.0)
+
+- Dark, Linear/Raycast-inspired design system (CSS variables, no build tools)
+- Popup + options share accent gradient (`#5b6cff` → `#9b6dff`)
+- Floating page hint/toast restyled to match
+- No npm UI kits (shadcn/DaisyUI would need a bundler) — pure vanilla CSS
 
 ### Shared autofill engine (v1.2.0)
 
@@ -71,7 +91,20 @@ filler/
 
 **Includes:**
 - Regular inputs, textareas, selects (if visible and enabled)
-- File inputs only for resume upload detection (PDF/DOCX accept + resume keywords)
+- File inputs only for resume upload detection
+
+**Label finding** (modern React/Next forms often lack `for=` / wrapping `<label>`):
+- Prefer `label[for]`, wrapping label, `aria-labelledby` / `aria-label`
+- Then previous sibling `<label>` and `:scope > label` on ancestors (up to 5 levels)
+- Fallback: short previous sibling text / parent text without controls
+- Example: `<div><label>Resume / Dossier</label><div><input type=file class="opacity-0"></div></div>`
+
+**Resume/CV file detection** (v1.3.1):
+- Nearby text (not just input attrs): `resume`, `cv` (word), `dossier`, `curriculum`, `резюме`, …
+- OR dropzone chrome: `upload`/`attach` + `pdf`/`docx` (even with empty `accept` and no name/id)
+- OR `accept` includes pdf/doc
+- Reject pure image/video/audio accept lists
+- Opacity-0 overlay inputs allowed if parent is visible
 
 **Essay detection** (heuristic):
 - `textarea` + (question mark OR essay keywords OR long prompt)
@@ -79,8 +112,15 @@ filler/
 ### Matching strategy
 
 1. **Rules first** (`matcher.js` + `conceptVocabulary.js`) — free, offline, fast
-2. **Gemini fallback** for unmatched fields — only metadata sent (name/id/label/placeholder/type + library keys)
+2. **Gemini fallback** for unmatched *profile* fields — only metadata sent (name/id/label/placeholder/type + library keys)
 3. **Library values never leave the device** — privacy by design
+
+**Social / URL specificity (v1.3.2):**
+- Separate concepts: `linkedin`, `github`, `twitter`, `portfolio`, `website`
+- Keyword priority: platform-specific beats generic (`linkedin` > `portfolio` > `website`)
+- Never use bare keyword `url` (false-positive on "LinkedIn / Portfolio URL")
+- Do not fill LinkedIn fields with GitHub values (and vice versa)
+- **Essay/open-ended textareas are never auto-filled from the profile library** (or Gemini key-matching) — they go to the ✨ AI answer panel only
 
 ### Storage
 
@@ -108,9 +148,8 @@ filler/
 
 ## Current state
 
-- **Version:** 1.2.0
-- **Last commit:** Update architecture diagram and add AGENTS.md for AI agents
-- **Tree:** clean
+- **Version:** 1.4.0
+- **Last change:** UI redesign + Alt+Shift+F auto-search shortcut
 - **Language:** all code, comments, and UI strings in English
 
 ## Recommendations for future agents
@@ -121,10 +160,12 @@ filler/
 4. **Keep autofillEngine as the single fill pipeline** — don't duplicate fill logic in popup/background
 5. **Library values must never leave the device** — only send metadata to Gemini
 6. **Rules first, Gemini fallback** — keep matching fast and offline-first
-7. **Update this file after each commit** — keep decisions and state current
-8. **Test in browser** — no automated tests, so manually verify in Chrome DevTools
-9. **Check syntax with `node --check <file>`** — catches typos before commit
-10. **Use English comments and English UI strings** — match existing style (concept vocabulary keywords may include other languages for form matching)
+7. **Always scan/apply via multi-frame helpers** (`afScanTab`, `afApplyValuesOnTab`) — never assume fields are only in the top document
+8. **Preserve `frameId` with every field** when applying values or restoring essay state
+9. **Update this file after each commit** — keep decisions and state current
+10. **Test in browser** — no automated tests; verify on a Greenhouse embed (e.g. fuga.com/jobs) after reload
+11. **Check syntax with `node --check <file>`** — catches typos before commit
+12. **Use English comments and English UI strings** — match existing style (concept vocabulary keywords may include other languages for form matching)
 
 ## Known limitations
 

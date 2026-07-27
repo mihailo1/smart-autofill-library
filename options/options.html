@@ -2,80 +2,118 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Smart Autofill Settings</title>
   <link rel="stylesheet" href="options.css" />
 </head>
 <body>
   <div class="af-options">
-    <h1>Smart Autofill Settings</h1>
+    <header class="af-options-hero">
+      <div class="af-options-brand">
+        <div class="af-logo" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" fill="currentColor"/>
+          </svg>
+        </div>
+        <div>
+          <h1>Smart Autofill</h1>
+          <p class="af-options-lead">Settings, library, resumes, and AI context</p>
+        </div>
+      </div>
+    </header>
 
     <section class="af-card">
-      <h2>Auto-search and shortcuts</h2>
-      <label class="af-checkbox">
-        <input type="checkbox" id="af-auto-search" />
-        <span>Auto-search fields on pages (show hint when there's something to fill)</span>
+      <div class="af-card-head">
+        <h2>Shortcuts &amp; auto-search</h2>
+        <p class="af-card-desc">Keyboard shortcuts work even when auto-search is off.</p>
+      </div>
+
+      <label class="af-toggle-row">
+        <span class="af-toggle-text">
+          <span class="af-toggle-title">Auto-search fields on pages</span>
+          <span class="af-toggle-sub">Show a floating hint when fillable fields are found</span>
+        </span>
+        <input type="checkbox" id="af-auto-search" class="af-toggle-input" />
+        <span class="af-toggle-track" aria-hidden="true"></span>
       </label>
-      <p class="af-hint" style="margin-top: 0;">
-        Shortcuts work <strong>always</strong>, even when auto-search is off.
-        Default: fill <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd>,
-        save to library <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>.
-        You can change these on the
-        <a href="chrome://extensions/shortcuts" target="_blank" rel="noopener" id="af-open-shortcuts">Chrome shortcuts page</a>.
-      </p>
+
+      <div class="af-shortcut-grid">
+        <div class="af-shortcut-row">
+          <span>Fill from library</span>
+          <kbd id="af-shortcut-current">…</kbd>
+        </div>
+        <div class="af-shortcut-row">
+          <span>Save to library</span>
+          <kbd id="af-save-shortcut-current">…</kbd>
+        </div>
+        <div class="af-shortcut-row">
+          <span>Toggle auto-search</span>
+          <kbd id="af-auto-search-shortcut-current">…</kbd>
+        </div>
+      </div>
+
       <p class="af-hint">
-        Fill: <strong id="af-shortcut-current">…</strong><br />
-        Save: <strong id="af-save-shortcut-current">…</strong>
+        Defaults: Fill <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd>,
+        Save <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>,
+        Auto-search <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd>.
+        Rebind on the
+        <a href="#" id="af-open-shortcuts">Chrome shortcuts page</a>.
       </p>
     </section>
 
     <section class="af-card">
-      <h2>Gemini API</h2>
+      <div class="af-card-head">
+        <h2>Gemini API</h2>
+        <p class="af-card-desc">Smart matching and essay answers. Values never leave the device.</p>
+      </div>
+
       <label class="af-field">
-        <span>Gemini API key</span>
+        <span>API key</span>
         <input type="password" id="af-api-key" placeholder="AIza..." autocomplete="off" />
       </label>
       <label class="af-field">
         <span>Model</span>
         <input type="text" id="af-model" placeholder="gemini-flash-lite-latest" />
       </label>
-      <label class="af-checkbox">
+
+      <label class="af-check">
         <input type="checkbox" id="af-use-gemini" />
-        <span>Use Gemini as fallback when rules don't find a match</span>
+        <span>Use Gemini when rules can’t match a field</span>
       </label>
-      <button id="af-save-settings" class="af-btn af-btn-primary">Save settings</button>
-      <span id="af-settings-status" class="af-inline-status"></span>
-      <p class="af-hint">
-        Get your key at
-        <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.
-        The key is stored locally in this browser (chrome.storage.local) and used
-        only for direct requests to the Gemini API from your device.
-      </p>
-    </section>
 
-    <section class="af-card">
-      <h2>Context about your experience</h2>
-      <p class="af-hint" style="margin-top: 0;">
-        Describe in free text who you are, what you've worked on, what interests you, and how you
-        usually talk about yourself. This will be used together with your resume to generate answers
-        to complex job application questions (like "Why do you want to work here?") in your style.
-      </p>
-      <textarea id="af-context" class="af-textarea" rows="6" placeholder="Example: I'm a frontend developer with 4 years of experience, I enjoy solving complex UI challenges, and I'm currently looking for a product company with interesting user problems..."></textarea>
-      <button id="af-save-context" class="af-btn af-btn-primary">Save context</button>
-      <span id="af-context-status" class="af-inline-status"></span>
-    </section>
-
-    <section class="af-card">
-      <div class="af-card-header">
-        <h2>Resumes (files)</h2>
+      <div class="af-actions-row">
+        <button id="af-save-settings" class="af-btn af-btn-primary">Save settings</button>
+        <span id="af-settings-status" class="af-inline-status"></span>
       </div>
-      <p class="af-hint" style="margin-top: 0;">
-        Upload one or more resumes in PDF or DOCX format. When autofilling, if a resume upload
-        field is found on the page, a menu will appear in the popup — the selected file will be
-        placed directly into that field. Resume text is also used to generate answers to job
-        application questions. The default resume is used unless you select another from the menu.
+      <p class="af-hint">
+        Free key at
+        <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.
+        Stored only in <code>chrome.storage.local</code>.
       </p>
+    </section>
+
+    <section class="af-card">
+      <div class="af-card-head">
+        <h2>Experience context</h2>
+        <p class="af-card-desc">Used with your resume to draft answers in your voice.</p>
+      </div>
+      <textarea id="af-context" class="af-textarea" rows="6" placeholder="Example: I'm a frontend developer with 4 years of experience. I like product companies with complex UI problems..."></textarea>
+      <div class="af-actions-row">
+        <button id="af-save-context" class="af-btn af-btn-primary">Save context</button>
+        <span id="af-context-status" class="af-inline-status"></span>
+      </div>
+    </section>
+
+    <section class="af-card">
+      <div class="af-card-head">
+        <h2>Resumes</h2>
+        <p class="af-card-desc">PDF or DOCX. Placed into file inputs and used for AI answers.</p>
+      </div>
       <div class="af-upload-row">
-        <input type="file" id="af-resume-file-input" accept=".pdf,.docx" class="af-file-input" />
+        <label class="af-file-btn">
+          <input type="file" id="af-resume-file-input" accept=".pdf,.docx" />
+          <span>Upload resume</span>
+        </label>
         <span id="af-resume-upload-status" class="af-inline-status"></span>
       </div>
       <div id="af-resume-list" class="af-resume-list"></div>
@@ -83,12 +121,17 @@
     </section>
 
     <section class="af-card">
-      <div class="af-card-header">
-        <h2>Saved fields library</h2>
-        <button id="af-refresh-library" class="af-icon-btn" title="Refresh">↻</button>
+      <div class="af-card-head af-card-head-row">
+        <div>
+          <h2>Field library</h2>
+          <p class="af-card-desc">Saved answers used for autofill.</p>
+        </div>
+        <button id="af-refresh-library" class="af-icon-btn" title="Refresh" aria-label="Refresh">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.3"/><path d="M21 3v6h-6"/></svg>
+        </button>
       </div>
       <div id="af-library-list" class="af-library-list"></div>
-      <p id="af-library-empty" class="af-hint hidden">Library is empty. Save fields from a page via the extension popup.</p>
+      <p id="af-library-empty" class="af-hint hidden">Library is empty. Save fields from a page via the popup.</p>
     </section>
 
     <footer class="af-version-footer">

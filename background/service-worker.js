@@ -11,6 +11,7 @@ importScripts(
 
 const AF_COMMAND_AUTOFILL = "af-autofill";
 const AF_COMMAND_SAVE = "af-save-library";
+const AF_COMMAND_AUTO_SEARCH = "af-toggle-auto-search";
 
 async function afGetActiveTabId() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -25,7 +26,7 @@ async function afGetActiveTabId() {
 async function afToastError(err) {
   try {
     const tabId = await afGetActiveTabId();
-    await chrome.tabs.sendMessage(tabId, {
+    await afSendTabMessage(tabId, {
       type: "AF_TOAST",
       text: `Error: ${err.message || err}`,
       kind: "error",
@@ -53,6 +54,24 @@ async function afRunSaveOnActiveTab(options = {}) {
   });
 }
 
+async function afToggleAutoSearch() {
+  const settings = await afGetSettings();
+  settings.autoSearchMode = !settings.autoSearchMode;
+  await afSetSettings(settings);
+  const enabled = !!settings.autoSearchMode;
+  try {
+    const tabId = await afGetActiveTabId();
+    await afSendTabMessage(tabId, {
+      type: "AF_TOAST",
+      text: enabled ? "🔍 Auto-search ON" : "Auto-search OFF",
+      kind: "info",
+    });
+  } catch (_) {
+    /* no accessible tab — storage change still updates content scripts */
+  }
+  return enabled;
+}
+
 chrome.commands.onCommand.addListener(async (command) => {
   try {
     if (command === AF_COMMAND_AUTOFILL) {
@@ -61,6 +80,10 @@ chrome.commands.onCommand.addListener(async (command) => {
     }
     if (command === AF_COMMAND_SAVE) {
       await afRunSaveOnActiveTab({ notifyPage: true });
+      return;
+    }
+    if (command === AF_COMMAND_AUTO_SEARCH) {
+      await afToggleAutoSearch();
       return;
     }
   } catch (e) {
@@ -114,17 +137,51 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  // Full-tab multi-frame scan (used by top-frame auto-search hint).
+  if (message?.type === "AF_SCAN_TAB") {
+    (async () => {
+      try {
+        const tabId =
+          message.tabId != null
+            ? message.tabId
+            : sender.tab?.id != null
+              ? sender.tab.id
+              : await afGetActiveTabId();
+        const result = await afScanTab(tabId);
+        sendResponse({ ok: true, ...result });
+      } catch (e) {
+        sendResponse({ ok: false, error: e.message || String(e), fields: [], resumeUploadFields: [] });
+      }
+    })();
+    return true;
+  }
+
+  // Nested frame DOM changed — tell top frame to re-run auto-search scan.
+  if (message?.type === "AF_FRAME_DOM_CHANGED") {
+    const tabId = sender.tab?.id;
+    if (tabId != null) {
+      chrome.tabs
+        .sendMessage(tabId, { type: "AF_RESCAN_HINT" }, { frameId: 0 })
+        .catch(() => {});
+    }
+    sendResponse({ ok: true });
+    return true;
+  }
+
   if (message?.type === "AF_GET_COMMAND_SHORTCUT") {
     chrome.commands.getAll((commands) => {
       const list = commands || [];
       const autofill = list.find((c) => c.name === AF_COMMAND_AUTOFILL);
       const save = list.find((c) => c.name === AF_COMMAND_SAVE);
+      const autoSearch = list.find((c) => c.name === AF_COMMAND_AUTO_SEARCH);
       sendResponse({
         shortcut: autofill?.shortcut || "",
         saveShortcut: save?.shortcut || "",
+        autoSearchShortcut: autoSearch?.shortcut || "",
         shortcuts: {
           autofill: autofill?.shortcut || "",
           save: save?.shortcut || "",
+          autoSearch: autoSearch?.shortcut || "",
         },
       });
     });

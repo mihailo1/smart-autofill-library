@@ -9,6 +9,8 @@ const scanSaveBtn = document.getElementById("af-scan-save-btn");
 const autoSearchInput = document.getElementById("af-auto-search");
 const shortcutLabelEl = document.getElementById("af-shortcut-label");
 const saveShortcutLabelEl = document.getElementById("af-save-shortcut-label");
+const autoSearchShortcutLabelEl = document.getElementById("af-auto-search-shortcut-label");
+const autoSearchShortcutChipEl = document.getElementById("af-auto-search-shortcut-chip");
 const shortcutLinkEl = document.getElementById("af-shortcut-link");
 const previewEl = document.getElementById("af-preview");
 const previewListEl = document.getElementById("af-preview-list");
@@ -73,26 +75,14 @@ async function getActiveTab() {
 }
 
 async function scanPage(tabId) {
-  try {
-    return await chrome.tabs.sendMessage(tabId, { type: "AF_SCAN_FIELDS" });
-  } catch (e) {
-    throw new Error("Could not access the page. Please refresh and try again.");
-  }
-}
-
-function afSlugFromField(field) {
-  const raw = field.name || field.id || field.label || field.placeholder || field.ariaLabel || field.afId;
-  const slug = raw
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/gi, "_")
-    .replace(/^_+|_+$/g, "");
-  return `custom_${slug || field.afId}`;
+  // Multi-frame scan (top page + embeds like Greenhouse).
+  return afScanTab(tabId);
 }
 
 async function refreshLibraryCount() {
   const library = await afGetLibrary();
   const count = Object.keys(library.entries).length;
-  libraryCountEl.textContent = count > 0 ? `Library: ${count} fields` : "Library is empty";
+  libraryCountEl.textContent = count > 0 ? `${count} field${count === 1 ? "" : "s"} in library` : "Library empty";
 }
 
 // --- Resume picker menu (appears on "Autofill" click if there's something to choose) ---
@@ -163,9 +153,8 @@ autofillBtn.addEventListener("click", async () => {
     let filledCount = 0;
     let usedGemini = false;
 
-    // Match ALL fields against the library (including essay questions) — a saved answer
-    // always takes priority over generation. Only essay fields with no library match
-    // go to the ✨ panel below.
+    // Match profile fields against the library. Essay/open-ended questions are NOT
+    // filled from website/portfolio/github — they go to the ✨ AI panel.
     afChosenResume = null;
     const filledAfIds = new Set();
 
@@ -173,10 +162,18 @@ autofillBtn.addEventListener("click", async () => {
       const ruleResult = afMatchFieldsToLibrary(allFields, library);
       const mapping = { ...ruleResult.mapping };
 
-      if (settings.useGeminiFallback && settings.geminiApiKey && ruleResult.unmatched.length > 0) {
+      const geminiCandidates =
+        typeof afFieldsForGeminiMatching === "function"
+          ? afFieldsForGeminiMatching(ruleResult.unmatched)
+          : ruleResult.unmatched.filter((f) => !f.isEssay);
+
+      if (settings.useGeminiFallback && settings.geminiApiKey && geminiCandidates.length > 0) {
         setStatus("Matching remaining fields via Gemini...");
         try {
-          const geminiMatches = await afCallGeminiForMatching(ruleResult.unmatched, library, settings);
+          let geminiMatches = await afCallGeminiForMatching(geminiCandidates, library, settings);
+          if (typeof afFilterGeminiMatches === "function") {
+            geminiMatches = afFilterGeminiMatches(geminiMatches, allFields, library);
+          }
           geminiMatches.forEach(({ afId, libraryKey }) => {
             const entry = library.entries[libraryKey];
             if (entry && entry.value) {
@@ -191,13 +188,13 @@ autofillBtn.addEventListener("click", async () => {
       }
 
       if (Object.keys(mapping).length > 0) {
-        const applyResult = await chrome.tabs.sendMessage(tab.id, { type: "AF_APPLY_VALUES", mapping });
-        filledCount = applyResult.filledCount;
+        const applyResult = await afApplyValuesOnTab(tab.id, mapping, allFields);
+        filledCount = applyResult.filledCount || 0;
         Object.keys(mapping).forEach((afId) => filledAfIds.add(afId));
       }
     }
 
-    // Only unanswered essay questions go to the ✨ panel.
+    // Essay questions always go to the ✨ panel (not auto-filled from profile library).
     const essayFieldsToGenerate = essayFields.filter((f) => !filledAfIds.has(f.afId));
     if (essayFieldsToGenerate.length > 0) {
       try {
@@ -229,14 +226,8 @@ autofillBtn.addEventListener("click", async () => {
       } else if (afChosenResume) {
         let placedCount = 0;
         for (const field of resumeUploadFields) {
-          const result = await chrome.tabs.sendMessage(tab.id, {
-            type: "AF_PLACE_FILE",
-            afId: field.afId,
-            base64: afChosenResume.dataBase64,
-            fileName: afChosenResume.fileName,
-            mimeType: afChosenResume.mimeType,
-          });
-          if (result.ok) placedCount += 1;
+          const result = await afPlaceFileOnTab(tab.id, field, afChosenResume);
+          if (result && result.ok) placedCount += 1;
         }
         statusLines.push(`Resume file placed in ${placedCount} of ${resumeUploadFields.length} field(s).`);
       } else {
@@ -408,11 +399,12 @@ document.getElementById("af-preview-confirm").addEventListener("click", async ()
 
 function renderEssayPanel(essayFields) {
   essayListEl.innerHTML = "";
-  // essayFields: [{ afId, label?, placeholder?, value? }]
+  // essayFields: [{ afId, frameId?, label?, placeholder?, value? }]
   essayFields.forEach((field) => {
     const item = document.createElement("div");
     item.className = "af-essay-item";
     item.dataset.afid = field.afId;
+    item.dataset.frameId = field.frameId != null ? String(field.frameId) : "0";
     const question = field.label || field.placeholder || field.ariaLabel || field.question || "Application question";
     item.dataset.question = question;
     item.innerHTML = `
@@ -423,7 +415,7 @@ function renderEssayPanel(essayFields) {
           <button class="af-sparkle-btn" data-afid="${escapeAttr(field.afId)}" title="Generate answer">✨</button>
         </div>
       </div>
-      <textarea class="af-essay-answer" data-afid="${escapeAttr(field.afId)}" rows="4" placeholder="Answer will appear here after generation, or type manually...">${escapeAttr(field.value || '')}</textarea>
+      <textarea class="af-essay-answer" data-afid="${escapeAttr(field.afId)}" data-frame-id="${escapeAttr(field.frameId != null ? field.frameId : 0)}" rows="4" placeholder="Answer will appear here after generation, or type manually...">${escapeAttr(field.value || '')}</textarea>
     `;
     essayListEl.appendChild(item);
   });
@@ -434,9 +426,10 @@ function renderEssayPanel(essayFields) {
     try {
       const current = Array.from(essayListEl.querySelectorAll('.af-essay-item')).map(el => {
         const afId = el.dataset.afid;
+        const frameId = Number(el.dataset.frameId || 0);
         const question = el.dataset.question;
         const textarea = el.querySelector('.af-essay-answer');
-        return { afId, question, value: textarea.value };
+        return { afId, frameId, question, value: textarea.value };
       });
       const tab = await getActiveTab();
       await new Promise((res) => chrome.storage.local.set({ af_last_essay: { fields: current, sourceUrl: tab?.url || "" } }, res));
@@ -527,9 +520,13 @@ function renderEssayPanel(essayFields) {
 
 document.getElementById("af-essay-apply").addEventListener("click", async () => {
   const mapping = {};
+  const fields = [];
   essayListEl.querySelectorAll(".af-essay-answer").forEach((textarea) => {
     if (textarea.value.trim() !== "") {
-      mapping[textarea.dataset.afid] = textarea.value;
+      const afId = textarea.dataset.afid;
+      const frameId = Number(textarea.dataset.frameId || 0);
+      mapping[afId] = textarea.value;
+      fields.push({ afId, frameId });
     }
   });
 
@@ -540,7 +537,7 @@ document.getElementById("af-essay-apply").addEventListener("click", async () => 
 
   try {
     const tab = await getActiveTab();
-    const applyResult = await chrome.tabs.sendMessage(tab.id, { type: "AF_APPLY_VALUES", mapping });
+    const applyResult = await afApplyValuesOnTab(tab.id, mapping, fields);
     setStatus(`Inserted ${applyResult.filledCount} answer(s).`);
     hideEssayPanel();
   } catch (e) {
@@ -588,11 +585,24 @@ async function loadShortcutLabel() {
     const res = await chrome.runtime.sendMessage({ type: "AF_GET_COMMAND_SHORTCUT" });
     afSetShortcutLabel(shortcutLabelEl, res?.shortcut || res?.shortcuts?.autofill || "");
     afSetShortcutLabel(saveShortcutLabelEl, res?.saveShortcut || res?.shortcuts?.save || "");
+    const autoSearch =
+      res?.autoSearchShortcut || res?.shortcuts?.autoSearch || "";
+    afSetShortcutLabel(autoSearchShortcutLabelEl, autoSearch);
+    afSetShortcutLabel(autoSearchShortcutChipEl, autoSearch);
   } catch (e) {
     if (shortcutLabelEl) shortcutLabelEl.textContent = "Alt+Shift+A";
     if (saveShortcutLabelEl) saveShortcutLabelEl.textContent = "Alt+Shift+S";
+    if (autoSearchShortcutLabelEl) autoSearchShortcutLabelEl.textContent = "Alt+Shift+F";
+    if (autoSearchShortcutChipEl) autoSearchShortcutChipEl.textContent = "Alt+Shift+F";
   }
 }
+
+// Keep toggle in sync when auto-search is flipped via keyboard shortcut.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== "local" || !changes.af_settings) return;
+  const next = changes.af_settings.newValue || {};
+  if (autoSearchInput) autoSearchInput.checked = !!next.autoSearchMode;
+});
 
 (async function initPopup() {
   await refreshLibraryCount();
@@ -612,7 +622,12 @@ async function loadShortcutLabel() {
     }
 
     if (essayValid && res.af_last_essay.fields && res.af_last_essay.fields.length > 0) {
-      const restored = res.af_last_essay.fields.map((f) => ({ afId: f.afId, label: f.question, value: f.value }));
+      const restored = res.af_last_essay.fields.map((f) => ({
+        afId: f.afId,
+        frameId: f.frameId != null ? f.frameId : 0,
+        label: f.question,
+        value: f.value,
+      }));
       renderEssayPanel(restored);
       setStatus((statusEl.textContent ? statusEl.textContent + "\n" : "") + `Restored answers for ${res.af_last_essay.fields.length} question(s).`);
     }

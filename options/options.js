@@ -4,6 +4,7 @@ const useGeminiInput = document.getElementById("af-use-gemini");
 const autoSearchInput = document.getElementById("af-auto-search");
 const shortcutCurrentEl = document.getElementById("af-shortcut-current");
 const saveShortcutCurrentEl = document.getElementById("af-save-shortcut-current");
+const autoSearchShortcutCurrentEl = document.getElementById("af-auto-search-shortcut-current");
 const saveSettingsBtn = document.getElementById("af-save-settings");
 const settingsStatusEl = document.getElementById("af-settings-status");
 const libraryListEl = document.getElementById("af-library-list");
@@ -32,18 +33,25 @@ autoSearchInput.addEventListener("change", async () => {
   await afSetSettings(settings);
 });
 
+function afShortcutOrUnset(value, fallback) {
+  return value || fallback || "not set";
+}
+
 async function loadShortcutLabel() {
   try {
     const res = await chrome.runtime.sendMessage({ type: "AF_GET_COMMAND_SHORTCUT" });
     const autofill = res?.shortcut || res?.shortcuts?.autofill || "";
     const save = res?.saveShortcut || res?.shortcuts?.save || "";
-    shortcutCurrentEl.textContent = autofill || "not set (chrome://extensions/shortcuts)";
-    if (saveShortcutCurrentEl) {
-      saveShortcutCurrentEl.textContent = save || "not set (chrome://extensions/shortcuts)";
+    const autoSearch = res?.autoSearchShortcut || res?.shortcuts?.autoSearch || "";
+    if (shortcutCurrentEl) shortcutCurrentEl.textContent = afShortcutOrUnset(autofill, "Alt+Shift+A");
+    if (saveShortcutCurrentEl) saveShortcutCurrentEl.textContent = afShortcutOrUnset(save, "Alt+Shift+S");
+    if (autoSearchShortcutCurrentEl) {
+      autoSearchShortcutCurrentEl.textContent = afShortcutOrUnset(autoSearch, "Alt+Shift+F");
     }
   } catch (e) {
-    shortcutCurrentEl.textContent = "Alt+Shift+A (default)";
-    if (saveShortcutCurrentEl) saveShortcutCurrentEl.textContent = "Alt+Shift+S (default)";
+    if (shortcutCurrentEl) shortcutCurrentEl.textContent = "Alt+Shift+A";
+    if (saveShortcutCurrentEl) saveShortcutCurrentEl.textContent = "Alt+Shift+S";
+    if (autoSearchShortcutCurrentEl) autoSearchShortcutCurrentEl.textContent = "Alt+Shift+F";
   }
 }
 

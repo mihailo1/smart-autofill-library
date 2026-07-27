@@ -2,83 +2,140 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Smart Autofill Library</title>
+  <title>Smart Autofill</title>
   <link rel="stylesheet" href="popup.css" />
 </head>
 <body>
   <div class="af-app">
+    <div class="af-glow" aria-hidden="true"></div>
+
     <header class="af-header">
-      <h1>Smart Autofill</h1>
-      <button id="af-open-options" class="af-icon-btn" title="Settings">⚙️</button>
+      <div class="af-brand">
+        <div class="af-logo" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" fill="currentColor"/>
+          </svg>
+        </div>
+        <div class="af-brand-text">
+          <h1>Smart Autofill</h1>
+          <span class="af-brand-sub">Library · Gemini</span>
+        </div>
+      </div>
+      <button id="af-open-options" class="af-icon-btn" title="Settings" aria-label="Settings">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.3.6.9 1 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>
+        </svg>
+      </button>
     </header>
 
-    <div id="af-resume-menu" class="af-resume-menu hidden">
-      <div class="af-preview-header">
+    <div id="af-resume-menu" class="af-panel af-resume-menu hidden">
+      <div class="af-panel-header">
         <span id="af-resume-menu-title">Select resume</span>
-        <button id="af-resume-menu-close" class="af-icon-btn">✕</button>
+        <button id="af-resume-menu-close" class="af-icon-btn" title="Close" aria-label="Close">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
       </div>
       <div id="af-resume-menu-list" class="af-resume-menu-list"></div>
     </div>
 
-    <div class="af-actions">
-      <button id="af-autofill-btn" class="af-btn af-btn-primary">⚡ Autofill</button>
-      <button id="af-scan-save-btn" class="af-btn af-btn-secondary">💾 Save to library</button>
-    </div>
+    <section class="af-hero">
+      <div class="af-actions">
+        <button id="af-autofill-btn" class="af-btn af-btn-primary">
+          <span class="af-btn-icon" aria-hidden="true">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" fill="currentColor"/></svg>
+          </span>
+          <span class="af-btn-copy">
+            <span class="af-btn-title">Autofill</span>
+            <span class="af-btn-sub">Fill from library</span>
+          </span>
+        </button>
+        <button id="af-scan-save-btn" class="af-btn af-btn-secondary">
+          <span class="af-btn-icon" aria-hidden="true">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
+          </span>
+          <span class="af-btn-copy">
+            <span class="af-btn-title">Save</span>
+            <span class="af-btn-sub">To library</span>
+          </span>
+        </button>
+      </div>
+    </section>
 
-    <label class="af-toggle-row" title="A hint will appear on pages with forms">
+    <label class="af-toggle-row" title="Show a floating hint when the page has fillable fields">
       <span class="af-toggle-text">
-        <span class="af-toggle-title">Auto-search fields</span>
-        <span class="af-toggle-sub">Hint on pages with fillable fields</span>
+        <span class="af-toggle-title">
+          Auto-search
+          <kbd id="af-auto-search-shortcut-label" class="af-kbd-inline">Alt+Shift+F</kbd>
+        </span>
+        <span class="af-toggle-sub">Hint when forms are detected</span>
       </span>
       <input type="checkbox" id="af-auto-search" class="af-toggle-input" />
       <span class="af-toggle-track" aria-hidden="true"></span>
     </label>
 
-    <div class="af-shortcut-hint" id="af-shortcut-hint">
-      <div class="af-shortcut-line">
-        Fill: <kbd id="af-shortcut-label">Alt+Shift+A</kbd>
+    <div class="af-shortcuts" id="af-shortcut-hint">
+      <div class="af-shortcut-chip">
+        <span class="af-shortcut-label">Fill</span>
+        <kbd id="af-shortcut-label">Alt+Shift+A</kbd>
       </div>
-      <div class="af-shortcut-line">
-        Save: <kbd id="af-save-shortcut-label">Alt+Shift+S</kbd>
+      <div class="af-shortcut-chip">
+        <span class="af-shortcut-label">Save</span>
+        <kbd id="af-save-shortcut-label">Alt+Shift+S</kbd>
       </div>
-      <a href="#" id="af-shortcut-link" class="af-shortcut-link">configure</a>
+      <div class="af-shortcut-chip">
+        <span class="af-shortcut-label">Search</span>
+        <kbd id="af-auto-search-shortcut-chip">Alt+Shift+F</kbd>
+      </div>
+      <a href="#" id="af-shortcut-link" class="af-shortcut-link" title="Open Chrome shortcuts">Edit</a>
     </div>
 
-    <div id="af-status" class="af-status"></div>
+    <div id="af-status" class="af-status" role="status" aria-live="polite"></div>
 
-    <div id="af-essay-panel" class="af-essay-panel hidden">
-      <div class="af-preview-header">
-        <span>Job questions — generate answers with ✨</span>
-        <button id="af-essay-close" class="af-icon-btn">✕</button>
+    <div id="af-essay-panel" class="af-panel af-essay-panel hidden">
+      <div class="af-panel-header">
+        <span class="af-panel-title">
+          <span class="af-panel-badge af-panel-badge-ai">AI</span>
+          Job questions
+        </span>
+        <button id="af-essay-close" class="af-icon-btn" title="Close" aria-label="Close">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
       </div>
       <div id="af-essay-list" class="af-essay-list"></div>
-      <div class="af-preview-footer">
-        <button id="af-essay-cancel" class="af-btn af-btn-secondary">Cancel</button>
-        <button id="af-essay-apply" class="af-btn af-btn-primary">Insert on page</button>
+      <div class="af-panel-footer">
+        <button id="af-essay-cancel" class="af-btn af-btn-ghost">Cancel</button>
+        <button id="af-essay-apply" class="af-btn af-btn-primary af-btn-sm">Insert on page</button>
       </div>
     </div>
 
-    <div id="af-preview" class="af-preview hidden">
-      <div class="af-preview-header">
-        <span>Fields found — select what to save</span>
-        <button id="af-preview-close" class="af-icon-btn">✕</button>
+    <div id="af-preview" class="af-panel af-preview hidden">
+      <div class="af-panel-header">
+        <span class="af-panel-title">
+          <span class="af-panel-badge">Save</span>
+          Review fields
+        </span>
+        <button id="af-preview-close" class="af-icon-btn" title="Close" aria-label="Close">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
       </div>
       <div id="af-preview-list" class="af-preview-list"></div>
-      <div class="af-preview-footer">
-        <button id="af-preview-cancel" class="af-btn af-btn-secondary">Cancel</button>
-        <button id="af-preview-confirm" class="af-btn af-btn-primary">Save selected</button>
+      <div class="af-panel-footer">
+        <button id="af-preview-cancel" class="af-btn af-btn-ghost">Cancel</button>
+        <button id="af-preview-confirm" class="af-btn af-btn-primary af-btn-sm">Save selected</button>
       </div>
     </div>
 
-    <div class="af-footer">
-      <span id="af-library-count"></span>
-    </div>
+    <footer class="af-footer">
+      <span id="af-library-count" class="af-pill">Library empty</span>
+    </footer>
   </div>
 
   <script src="../lib/conceptVocabulary.js"></script>
   <script src="../lib/storage.js"></script>
   <script src="../lib/matcher.js"></script>
   <script src="../lib/geminiClient.js"></script>
+  <script src="../lib/autofillEngine.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

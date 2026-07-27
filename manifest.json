@@ -1,13 +1,14 @@
 {
   "manifest_version": 3,
   "name": "Smart Autofill Library",
-  "version": "1.2.0",
+  "version": "1.4.0",
   "description": "Remembers how you fill out forms on websites and automatically fills them next time. Uses Gemini API for smart field matching.",
   "permissions": [
     "storage",
     "unlimitedStorage",
     "activeTab",
-    "scripting"
+    "scripting",
+    "webNavigation"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -29,6 +30,13 @@
         "mac": "Alt+Shift+S"
       },
       "description": "Save filled fields from page to library"
+    },
+    "af-toggle-auto-search": {
+      "suggested_key": {
+        "default": "Alt+Shift+F",
+        "mac": "Alt+Shift+F"
+      },
+      "description": "Toggle auto-search fields on pages"
     }
   },
   "action": {
@@ -55,7 +63,9 @@
         "lib/fieldDetector.js",
         "content/content-script.js"
       ],
-      "run_at": "document_idle"
+      "run_at": "document_idle",
+      "all_frames": true,
+      "match_about_blank": false
     }
   ],
   "web_accessible_resources": [

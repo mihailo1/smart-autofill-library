@@ -1,9 +1,11 @@
 // Content script: DOM scanning, auto-search, floating hint, toast, apply.
-// Messages from popup / background; does not access network or read library values.
+// Injected into all frames (all_frames: true). Only the top frame owns UI (hint/toast)
+// and auto-search; iframes only answer scan/apply/place messages.
 
 const AF_HINT_HOST_ID = "af-smart-hint-host";
 const AF_TOAST_HOST_ID = "af-smart-toast-host";
 const AF_SCAN_DEBOUNCE_MS = 600;
+const AF_IS_TOP_FRAME = window === window.top;
 
 let afAutoSearchEnabled = false;
 let afScanTimer = null;
@@ -34,14 +36,32 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  // UI messages only make sense in the top frame (visible page chrome).
   if (message.type === "AF_TOAST") {
+    if (!AF_IS_TOP_FRAME) {
+      sendResponse({ ok: false, skipped: true });
+      return true;
+    }
     afShowToast(message.text || "", message.kind || "info");
     sendResponse({ ok: true });
     return true;
   }
 
   if (message.type === "AF_SET_AUTO_SEARCH") {
+    if (!AF_IS_TOP_FRAME) {
+      sendResponse({ ok: false, skipped: true });
+      return true;
+    }
     afSetAutoSearch(!!message.enabled);
+    sendResponse({ ok: true });
+    return true;
+  }
+
+  // Background asks top frame to re-scan after a nested frame mutated.
+  if (message.type === "AF_RESCAN_HINT") {
+    if (AF_IS_TOP_FRAME && afAutoSearchEnabled) {
+      afScheduleScan();
+    }
     sendResponse({ ok: true });
     return true;
   }
@@ -49,9 +69,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return false;
 });
 
-// --- Auto search mode ---
+// --- Auto search mode (top frame only) ---
 
 function afSetAutoSearch(enabled) {
+  if (!AF_IS_TOP_FRAME) return;
   afAutoSearchEnabled = enabled;
   if (enabled) {
     afStartObserving();
@@ -66,7 +87,7 @@ function afSetAutoSearch(enabled) {
 }
 
 function afScheduleScan() {
-  if (!afAutoSearchEnabled) return;
+  if (!afAutoSearchEnabled || !AF_IS_TOP_FRAME) return;
   if (afScanTimer) clearTimeout(afScanTimer);
   afScanTimer = setTimeout(() => {
     afScanTimer = null;
@@ -74,14 +95,30 @@ function afScheduleScan() {
   }, AF_SCAN_DEBOUNCE_MS);
 }
 
-function afRunAutoScan() {
-  if (!afAutoSearchEnabled) return;
+async function afRunAutoScan() {
+  if (!afAutoSearchEnabled || !AF_IS_TOP_FRAME) return;
   if (document.visibilityState === "hidden") return;
 
   try {
-    const { fields, resumeUploadFields } = afCollectFields();
-    // Count only empty fields — pre-filled fields shouldn't keep the hint visible.
-    // Empty essay fields count too — useful to know the form exists.
+    // Full-tab scan via background so fields inside cross-origin iframes
+    // (Greenhouse, Lever, etc.) are counted too.
+    let fields = [];
+    let resumeUploadFields = [];
+    try {
+      const res = await chrome.runtime.sendMessage({ type: "AF_SCAN_TAB" });
+      if (res && res.ok !== false) {
+        fields = res.fields || [];
+        resumeUploadFields = res.resumeUploadFields || [];
+      } else {
+        throw new Error(res?.error || "scan failed");
+      }
+    } catch (_) {
+      // Fallback: local document only (e.g. background not ready).
+      const local = afCollectFields();
+      fields = local.fields || [];
+      resumeUploadFields = local.resumeUploadFields || [];
+    }
+
     const emptyFields = (fields || []).filter((f) => !(f.value || "").trim());
     const count = emptyFields.length + (resumeUploadFields || []).length;
     afLastFieldCount = count;
@@ -97,6 +134,7 @@ function afRunAutoScan() {
 }
 
 function afStartObserving() {
+  if (!AF_IS_TOP_FRAME) return;
   if (afObserver) return;
   afObserver = new MutationObserver(() => afScheduleScan());
   if (document.documentElement) {
@@ -149,55 +187,67 @@ function afEnsureHintHost() {
       .wrap {
         display: flex;
         align-items: center;
-        gap: 8px;
-        background: #1f2430;
-        color: #fff;
+        gap: 10px;
+        background: linear-gradient(145deg, #161925 0%, #12141c 100%);
+        color: #f2f3f7;
+        border: 1px solid rgba(255,255,255,0.1);
         border-radius: 999px;
-        padding: 8px 10px 8px 14px;
-        box-shadow: 0 8px 28px rgba(20, 30, 60, 0.28);
+        padding: 8px 10px 8px 12px;
+        box-shadow: 0 12px 40px rgba(0,0,0,0.35), 0 0 0 1px rgba(109,124,255,0.08);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         font-size: 13px;
         line-height: 1.2;
-        max-width: min(360px, calc(100vw - 40px));
-        animation: af-in 0.2s ease-out;
+        max-width: min(380px, calc(100vw - 40px));
+        animation: af-in 0.22s ease-out;
         cursor: default;
         user-select: none;
+        backdrop-filter: blur(10px);
       }
       @keyframes af-in {
-        from { opacity: 0; transform: translateY(8px); }
-        to { opacity: 1; transform: translateY(0); }
+        from { opacity: 0; transform: translateY(10px) scale(0.98); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
       }
-      .icon { font-size: 14px; flex-shrink: 0; }
+      .bolt {
+        width: 28px; height: 28px; border-radius: 9px; flex-shrink: 0;
+        display: grid; place-items: center; color: #fff;
+        background: linear-gradient(135deg, #5b6cff, #9b6dff);
+        box-shadow: 0 4px 14px rgba(91,108,255,0.4);
+      }
       .text { flex: 1; min-width: 0; }
-      .title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      .sub { font-size: 11px; opacity: 0.72; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .title { font-weight: 650; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .sub { font-size: 11px; color: #9aa3b8; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .fill-btn {
         border: none;
-        background: #2f6fed;
+        background: linear-gradient(135deg, #5b6cff, #7a5cff);
         color: white;
-        font-weight: 600;
+        font-weight: 650;
         font-size: 12px;
         border-radius: 999px;
-        padding: 6px 12px;
+        padding: 7px 13px;
         cursor: pointer;
         flex-shrink: 0;
+        box-shadow: 0 4px 12px rgba(91,108,255,0.35);
+        font-family: inherit;
       }
-      .fill-btn:hover { background: #2563d9; }
-      .fill-btn:disabled { opacity: 0.6; cursor: wait; }
+      .fill-btn:hover { filter: brightness(1.08); }
+      .fill-btn:disabled { opacity: 0.6; cursor: wait; filter: none; }
       .close {
         border: none;
         background: transparent;
-        color: rgba(255,255,255,0.7);
+        color: rgba(255,255,255,0.55);
         font-size: 14px;
         cursor: pointer;
-        padding: 2px 4px;
-        border-radius: 6px;
+        padding: 4px 6px;
+        border-radius: 8px;
         flex-shrink: 0;
         line-height: 1;
       }
-      .close:hover { background: rgba(255,255,255,0.12); color: #fff; }
+      .close:hover { background: rgba(255,255,255,0.08); color: #fff; }
     </style>
     <div class="wrap" part="wrap">
-      <span class="icon">⚡</span>
+      <span class="bolt" aria-hidden="true">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" fill="currentColor"/></svg>
+      </span>
       <div class="text">
         <div class="title" id="title">Autofill fields</div>
         <div class="sub" id="sub"></div>
@@ -220,6 +270,7 @@ function afEnsureHintHost() {
 }
 
 function afShowHint(count, fields, resumeUploadFields) {
+  if (!AF_IS_TOP_FRAME) return;
   const host = afEnsureHintHost();
   const shadow = host.shadowRoot;
 
@@ -269,6 +320,7 @@ async function afTriggerAutofillFromHint() {
 // --- Toast ---
 
 function afShowToast(text, kind = "info") {
+  if (!AF_IS_TOP_FRAME) return;
   let host = document.getElementById(AF_TOAST_HOST_ID);
   if (!host) {
     host = document.createElement("div");
@@ -284,20 +336,29 @@ function afShowToast(text, kind = "info") {
     shadow.innerHTML = `
       <style>
         .toast {
-          background: #1f2430;
-          color: #fff;
-          border-radius: 10px;
-          padding: 10px 14px;
-          font-size: 13px;
-          line-height: 1.35;
-          box-shadow: 0 8px 28px rgba(20, 30, 60, 0.28);
+          background: linear-gradient(145deg, #161925, #12141c);
+          color: #f2f3f7;
+          border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 12px;
+          padding: 11px 14px;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          font-size: 12.5px;
+          font-weight: 500;
+          line-height: 1.4;
+          box-shadow: 0 12px 36px rgba(0,0,0,0.35);
           max-width: min(340px, calc(100vw - 40px));
           white-space: pre-line;
           animation: af-in 0.18s ease-out;
         }
-        .toast.success { background: #1a7f4b; }
-        .toast.error { background: #b42318; }
-        .toast.info { background: #1f2430; }
+        .toast.success {
+          background: linear-gradient(145deg, #143528, #102a20);
+          border-color: rgba(62, 207, 142, 0.35);
+        }
+        .toast.error {
+          background: linear-gradient(145deg, #3a1515, #2a1010);
+          border-color: rgba(255, 107, 107, 0.35);
+        }
+        .toast.info { }
         @keyframes af-in {
           from { opacity: 0; transform: translateY(6px); }
           to { opacity: 1; transform: translateY(0); }
@@ -322,6 +383,9 @@ function afShowToast(text, kind = "info") {
 // --- Init ---
 
 async function afInitContent() {
+  // Nested frames only handle DOM scan/apply messages — no UI, no observers.
+  if (!AF_IS_TOP_FRAME) return;
+
   try {
     const settings = await new Promise((resolve) => {
       chrome.storage.local.get(["af_settings"], (result) => {
@@ -341,21 +405,24 @@ async function afInitContent() {
   }
 }
 
-chrome.storage.onChanged.addListener((changes, area) => {
-  if (area !== "local" || !changes.af_settings) return;
-  const next = changes.af_settings.newValue || {};
-  const prev = changes.af_settings.oldValue || {};
-  if (!!next.autoSearchMode !== !!prev.autoSearchMode) {
-    afHintDismissedForUrl = "";
-    afSetAutoSearch(!!next.autoSearchMode);
-  }
-});
+if (AF_IS_TOP_FRAME) {
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== "local" || !changes.af_settings) return;
+    const next = changes.af_settings.newValue || {};
+    const prev = changes.af_settings.oldValue || {};
+    if (!!next.autoSearchMode !== !!prev.autoSearchMode) {
+      afHintDismissedForUrl = "";
+      afSetAutoSearch(!!next.autoSearchMode);
+    }
+  });
+}
 
 // SPA navigations: soft URL change. Watcher runs only while auto-search is enabled.
 let afNavIntervalId = null;
 let afLastHref = location.href;
 
 function afStartNavWatcher() {
+  if (!AF_IS_TOP_FRAME) return;
   if (afNavIntervalId != null) return;
   afLastHref = location.href;
   afNavIntervalId = setInterval(() => {
@@ -372,6 +439,45 @@ function afStopNavWatcher() {
     clearInterval(afNavIntervalId);
     afNavIntervalId = null;
   }
+}
+
+// Nested frames: when their DOM changes (SPA job form steps), ask top to re-scan.
+// Only while auto-search is enabled — otherwise no observers in embeds.
+if (!AF_IS_TOP_FRAME) {
+  let afChildScanTimer = null;
+  let afChildObserver = null;
+
+  const notifyTop = () => {
+    if (afChildScanTimer) clearTimeout(afChildScanTimer);
+    afChildScanTimer = setTimeout(() => {
+      afChildScanTimer = null;
+      chrome.runtime.sendMessage({ type: "AF_FRAME_DOM_CHANGED" }).catch(() => {});
+    }, AF_SCAN_DEBOUNCE_MS);
+  };
+
+  function afSetChildObserving(enabled) {
+    if (enabled && !afChildObserver) {
+      try {
+        afChildObserver = new MutationObserver(notifyTop);
+        if (document.documentElement) {
+          afChildObserver.observe(document.documentElement, { childList: true, subtree: true });
+        }
+      } catch (_) {
+        afChildObserver = null;
+      }
+    } else if (!enabled && afChildObserver) {
+      afChildObserver.disconnect();
+      afChildObserver = null;
+    }
+  }
+
+  chrome.storage.local.get(["af_settings"], (result) => {
+    afSetChildObserving(!!(result.af_settings || {}).autoSearchMode);
+  });
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== "local" || !changes.af_settings) return;
+    afSetChildObserving(!!(changes.af_settings.newValue || {}).autoSearchMode);
+  });
 }
 
 afInitContent();
