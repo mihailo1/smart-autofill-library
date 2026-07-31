@@ -19,11 +19,27 @@ const essayListEl = document.getElementById("af-essay-list");
 const resumeMenuEl = document.getElementById("af-resume-menu");
 const resumeMenuListEl = document.getElementById("af-resume-menu-list");
 const resumeMenuTitleEl = document.getElementById("af-resume-menu-title");
+const mainViewEl = document.getElementById("af-main-view");
+const libraryViewEl = document.getElementById("af-library-view");
+const librarySearchEl = document.getElementById("af-library-search");
+const librarySearchClearEl = document.getElementById("af-library-search-clear");
+const libraryBrowserListEl = document.getElementById("af-library-browser-list");
+const libraryEmptyEl = document.getElementById("af-library-empty");
+const libraryNoResultsEl = document.getElementById("af-library-no-results");
+const toggleLibraryBtn = document.getElementById("af-toggle-library");
+const headerBrandEl = document.getElementById("af-header-brand");
+const headerSearchEl = document.getElementById("af-header-search");
+const appEl = document.querySelector(".af-app");
 
 // Resume chosen in the current autofill session. Stored at module level (not in a closure)
 // so the ✨ handler reads it on click — otherwise re-rendering the panel would lose
 // already typed/generated answers.
 let afChosenResume = null;
+let afLibraryMode = false;
+/** @type {{ key: string, label: string, value: string }[]} */
+let afLibraryCache = [];
+let afLibrarySearchQuery = "";
+let afLibrarySaveTimer = null;
 
 document.getElementById("af-open-options").addEventListener("click", () => {
   chrome.runtime.openOptionsPage();
@@ -36,11 +52,19 @@ document.getElementById("af-essay-cancel").addEventListener("click", hideEssayPa
 // so no global handler needed here.
 
 function setStatus(text) {
-  statusEl.textContent = text;
+  if (statusEl) statusEl.textContent = text;
 }
 
 function escapeAttr(value) {
   return String(value || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 async function clearPopupState() {
@@ -80,9 +104,350 @@ async function scanPage(tabId) {
 
 async function refreshLibraryCount() {
   const library = await afGetLibrary();
-  const count = Object.keys(library.entries).length;
-  libraryCountEl.textContent = count > 0 ? `${count} field${count === 1 ? "" : "s"} in library` : "Library empty";
+  const count = Object.keys(library.entries || {}).length;
+  libraryCountEl.textContent =
+    count > 0 ? `${count} field${count === 1 ? "" : "s"} in library` : "Library empty";
 }
+
+// --- Library browser (search / copy / edit without growing the popup) ---
+
+function afLibraryEntriesToList(library) {
+  const entries = library?.entries || {};
+  return Object.keys(entries)
+    .map((key) => ({
+      key,
+      label: entries[key]?.label || key,
+      value: entries[key]?.value || "",
+    }))
+    .sort((a, b) => {
+      const la = (a.label || a.key).toLowerCase();
+      const lb = (b.label || b.key).toLowerCase();
+      return la.localeCompare(lb);
+    });
+}
+
+function afLibraryFilterEntries(entries, query) {
+  const q = String(query || "")
+    .trim()
+    .toLowerCase();
+  if (!q) return entries;
+  const tokens = q.split(/\s+/).filter(Boolean);
+  return entries.filter((entry) => {
+    const blob = `${entry.key} ${entry.label} ${entry.value}`.toLowerCase();
+    return tokens.every((t) => blob.includes(t));
+  });
+}
+
+/** Chrome action popups practically top out ~600px; never lock taller (causes double scroll). */
+function afPopupHeightCap() {
+  const cssCap = 600;
+  const screenCap = Math.floor(((window.screen && window.screen.availHeight) || 900) * 0.7);
+  // window.innerHeight in a popup is the current host height (already capped by Chrome).
+  const hostCap = window.innerHeight > 40 ? window.innerHeight : cssCap;
+  return Math.max(200, Math.min(cssCap, screenCap, hostCap));
+}
+
+function afLockPopupHeight() {
+  // Lock .af-app to current main-mode height (capped). Only .af-library-browser-list scrolls.
+  if (!appEl) return;
+  const measured = Math.round(appEl.getBoundingClientRect().height);
+  const h = Math.max(1, Math.min(measured, afPopupHeightCap()));
+  const px = `${h}px`;
+  appEl.style.height = px;
+  appEl.style.maxHeight = px;
+  appEl.style.minHeight = px;
+  appEl.style.overflow = "hidden";
+  document.documentElement.style.overflow = "hidden";
+  document.body.style.overflow = "hidden";
+  document.documentElement.style.maxHeight = px;
+  document.body.style.maxHeight = px;
+}
+
+function afUnlockPopupHeight() {
+  document.documentElement.style.overflow = "";
+  document.documentElement.style.maxHeight = "";
+  document.body.style.overflow = "";
+  document.body.style.maxHeight = "";
+  if (appEl) {
+    appEl.style.height = "";
+    appEl.style.maxHeight = "";
+    appEl.style.minHeight = "";
+    appEl.style.overflow = "";
+  }
+}
+
+function setLibraryMode(open) {
+  const wantOpen = !!open;
+
+  if (wantOpen && !afLibraryMode) {
+    // Measure main-mode shell first, then swap — no growth.
+    afLockPopupHeight();
+    appEl?.classList.add("af-mode-library");
+  }
+
+  afLibraryMode = wantOpen;
+  mainViewEl.classList.toggle("hidden", afLibraryMode);
+  libraryViewEl.classList.toggle("hidden", !afLibraryMode);
+  headerBrandEl?.classList.toggle("hidden", afLibraryMode);
+  headerSearchEl?.classList.toggle("hidden", !afLibraryMode);
+
+  if (afLibraryMode) {
+    libraryViewEl.removeAttribute("hidden");
+    headerSearchEl?.removeAttribute("hidden");
+  } else {
+    libraryViewEl.setAttribute("hidden", "");
+    headerSearchEl?.setAttribute("hidden", "");
+    appEl?.classList.remove("af-mode-library");
+    afUnlockPopupHeight();
+  }
+
+  toggleLibraryBtn.setAttribute("aria-pressed", afLibraryMode ? "true" : "false");
+  libraryCountEl.classList.toggle("af-pill-active", afLibraryMode);
+  toggleLibraryBtn.title = afLibraryMode
+    ? "Back to autofill"
+    : "Browse library (search, copy, edit)";
+
+  if (afLibraryMode) {
+    afSyncLibrarySearchClear();
+    requestAnimationFrame(() => {
+      librarySearchEl.focus();
+      librarySearchEl.select?.();
+    });
+  } else {
+    // Reset query when leaving library so next open is clean.
+    librarySearchEl.value = "";
+    afLibrarySearchQuery = "";
+    afSyncLibrarySearchClear();
+  }
+}
+
+function afSyncLibrarySearchClear() {
+  if (!librarySearchClearEl) return;
+  const has = String(librarySearchEl?.value || "").length > 0;
+  librarySearchClearEl.classList.toggle("hidden", !has);
+}
+
+async function loadLibraryBrowser(preserveScroll) {
+  const scrollTop = preserveScroll ? libraryBrowserListEl.scrollTop : 0;
+  const library = await afGetLibrary();
+  afLibraryCache = afLibraryEntriesToList(library);
+  renderLibraryBrowser();
+  if (preserveScroll) libraryBrowserListEl.scrollTop = scrollTop;
+  await refreshLibraryCount();
+}
+
+function renderLibraryBrowser() {
+  const filtered = afLibraryFilterEntries(afLibraryCache, afLibrarySearchQuery);
+  const total = afLibraryCache.length;
+
+  libraryEmptyEl.classList.toggle("hidden", total > 0);
+  libraryNoResultsEl.classList.toggle("hidden", !(total > 0 && filtered.length === 0));
+  libraryBrowserListEl.classList.toggle("hidden", filtered.length === 0);
+
+  // Counter in footer shows total; keep it accurate while filtering.
+  if (afLibrarySearchQuery.trim() && total > 0) {
+    libraryCountEl.textContent = `${filtered.length} of ${total}`;
+  } else {
+    libraryCountEl.textContent =
+      total > 0 ? `${total} field${total === 1 ? "" : "s"} in library` : "Library empty";
+  }
+
+  libraryBrowserListEl.innerHTML = filtered
+    .map((entry) => {
+      const valueRows = Math.min(4, Math.max(1, String(entry.value || "").split("\n").length));
+      return `
+      <div class="af-lib-row" role="listitem" data-key="${escapeAttr(entry.key)}">
+        <div class="af-lib-row-top">
+          <div class="af-lib-row-text">
+            <input
+              type="text"
+              class="af-lib-label-input"
+              value="${escapeAttr(entry.label)}"
+              data-key="${escapeAttr(entry.key)}"
+              data-field="label"
+              placeholder="Label"
+              spellcheck="false"
+            />
+            <div class="af-lib-key" title="${escapeAttr(entry.key)}">${escapeHtml(entry.key)}</div>
+          </div>
+          <div class="af-lib-actions">
+            <button type="button" class="af-lib-action" data-action="copy-value" data-key="${escapeAttr(entry.key)}" title="Copy value" aria-label="Copy value">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            </button>
+            <button type="button" class="af-lib-action" data-action="copy-key" data-key="${escapeAttr(entry.key)}" title="Copy key" aria-label="Copy key">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7h10v10H7z"/><path d="M3 11V5a2 2 0 0 1 2-2h6"/><path d="M21 13v6a2 2 0 0 1-2 2h-6"/></svg>
+            </button>
+            <button type="button" class="af-lib-action af-lib-action-danger" data-action="delete" data-key="${escapeAttr(entry.key)}" title="Delete field" aria-label="Delete field">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>
+            </button>
+          </div>
+        </div>
+        <textarea
+          class="af-lib-value-input"
+          rows="${valueRows}"
+          data-key="${escapeAttr(entry.key)}"
+          data-field="value"
+          placeholder="Value"
+          spellcheck="false"
+        >${escapeHtml(entry.value)}</textarea>
+      </div>`;
+    })
+    .join("");
+}
+
+async function afCopyText(text) {
+  const value = String(text ?? "");
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value);
+      return true;
+    }
+  } catch (_) {
+    /* fall through */
+  }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = value;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch (_) {
+    return false;
+  }
+}
+
+function afFlashCopied(btn) {
+  if (!btn) return;
+  btn.classList.add("af-copied");
+  const prev = btn.title;
+  btn.title = "Copied";
+  setTimeout(() => {
+    btn.classList.remove("af-copied");
+    btn.title = prev;
+  }, 900);
+}
+
+function afScheduleLibraryFieldSave(key, field, value) {
+  // Update local cache immediately so search stays consistent while typing.
+  const item = afLibraryCache.find((e) => e.key === key);
+  if (item) item[field] = value;
+
+  if (afLibrarySaveTimer) clearTimeout(afLibrarySaveTimer);
+  afLibrarySaveTimer = setTimeout(async () => {
+    afLibrarySaveTimer = null;
+    try {
+      const library = await afGetLibrary();
+      if (!library.entries[key]) return;
+      if (field === "label") library.entries[key].label = value;
+      if (field === "value") library.entries[key].value = value;
+      library.entries[key].updatedAt = new Date().toISOString();
+      await afSetLibrary(library);
+      await refreshLibraryCount();
+    } catch (err) {
+      console.warn("Failed to save library field", err);
+    }
+  }, 280);
+}
+
+toggleLibraryBtn.addEventListener("click", async () => {
+  if (afLibraryMode) {
+    setLibraryMode(false);
+    return;
+  }
+  await loadLibraryBrowser(false);
+  setLibraryMode(true);
+});
+
+libraryCountEl.addEventListener("click", async () => {
+  if (afLibraryMode) {
+    setLibraryMode(false);
+    return;
+  }
+  await loadLibraryBrowser(false);
+  setLibraryMode(true);
+});
+
+librarySearchEl.addEventListener("input", () => {
+  afLibrarySearchQuery = librarySearchEl.value;
+  afSyncLibrarySearchClear();
+  renderLibraryBrowser();
+});
+
+librarySearchClearEl?.addEventListener("click", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  librarySearchEl.value = "";
+  afLibrarySearchQuery = "";
+  afSyncLibrarySearchClear();
+  renderLibraryBrowser();
+  librarySearchEl.focus();
+});
+
+libraryBrowserListEl.addEventListener("click", async (e) => {
+  const btn = e.target.closest("[data-action]");
+  if (!btn) return;
+  const key = btn.dataset.key;
+  const action = btn.dataset.action;
+  const entry = afLibraryCache.find((item) => item.key === key);
+  if (!entry) return;
+
+  if (action === "copy-value") {
+    const ok = await afCopyText(entry.value);
+    if (ok) afFlashCopied(btn);
+    return;
+  }
+  if (action === "copy-key") {
+    const ok = await afCopyText(entry.key);
+    if (ok) afFlashCopied(btn);
+    return;
+  }
+  if (action === "delete") {
+    const label = entry.label || entry.key;
+    if (!confirm(`Delete “${label}” from the library?`)) return;
+    await afDeleteEntry(key);
+    await loadLibraryBrowser(true);
+  }
+});
+
+libraryBrowserListEl.addEventListener("input", (e) => {
+  const el = e.target;
+  if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return;
+  const key = el.dataset.key;
+  const field = el.dataset.field;
+  if (!key || (field !== "label" && field !== "value")) return;
+  afScheduleLibraryFieldSave(key, field, el.value);
+});
+
+// Slash focuses search when library mode is open; Escape closes library mode.
+document.addEventListener("keydown", (e) => {
+  if (!afLibraryMode) {
+    // Quick open library with "/" when not typing in another field.
+    if (e.key === "/" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      const tag = (e.target && e.target.tagName) || "";
+      if (tag === "INPUT" || tag === "TEXTAREA" || e.target?.isContentEditable) return;
+      e.preventDefault();
+      toggleLibraryBtn.click();
+    }
+    return;
+  }
+  if (e.key === "Escape") {
+    e.preventDefault();
+    setLibraryMode(false);
+    return;
+  }
+  if (e.key === "/" && document.activeElement !== librarySearchEl) {
+    const tag = (e.target && e.target.tagName) || "";
+    if (tag === "INPUT" || tag === "TEXTAREA") return;
+    e.preventDefault();
+    librarySearchEl.focus();
+    librarySearchEl.select?.();
+  }
+});
 
 // --- Resume picker menu (appears on "Autofill" click if there's something to choose) ---
 
@@ -264,7 +629,10 @@ scanSaveBtn.addEventListener("click", async () => {
     }
 
     const settings = await afGetSettings();
-    const unclassified = fields.filter((f) => !f.guessedConcept);
+    const library = await afGetLibrary();
+    // Don't spend Gemini calls classifying consent/confirm junk or empty shells.
+    const candidates = fields.filter((f) => !afIsJunkLibraryField(f));
+    const unclassified = candidates.filter((f) => !f.guessedConcept);
     let suggestions = [];
     if (settings.useGeminiFallback && settings.geminiApiKey && unclassified.length > 0) {
       setStatus("Classifying fields via Gemini...");
@@ -276,22 +644,29 @@ scanSaveBtn.addEventListener("click", async () => {
     }
 
     const suggestionMap = new Map(suggestions.map((s) => [s.afId, s]));
+    const { items: previewItems, stats } = afBuildLibrarySaveItems(
+      fields,
+      library,
+      suggestionMap,
+      tab.url || ""
+    );
 
-    const previewItems = fields.map((field) => {
-      const suggestion = suggestionMap.get(field.afId);
-      const key = field.guessedConcept || suggestion?.key || afSlugFromField(field);
-      const label =
-        (field.guessedConcept && afConceptLabel(field.guessedConcept)) ||
-        suggestion?.label ||
-        field.label ||
-        field.placeholder ||
-        field.name ||
-        "Field";
-      return { afId: field.afId, key, label, value: field.value, sourceType: field.type };
-    });
+    if (previewItems.length === 0) {
+      const parts = [];
+      if (stats.unchanged) parts.push(`${stats.unchanged} already in library`);
+      if (stats.junk) parts.push(`${stats.junk} skipped (confirm/consent/etc.)`);
+      setStatus(parts.length ? `Nothing new to save — ${parts.join(", ")}.` : "Nothing new to save.");
+      hidePreview();
+      return;
+    }
 
     await renderPreview(previewItems, tab.url);
-    setStatus(`Found ${previewItems.length} fields. Review and save.`);
+    const statusParts = [`${previewItems.length} to review`];
+    if (stats.fresh) statusParts.push(`${stats.fresh} new`);
+    if (stats.updates) statusParts.push(`${stats.updates} updated value`);
+    if (stats.unchanged) statusParts.push(`${stats.unchanged} already saved (hidden)`);
+    if (stats.junk) statusParts.push(`${stats.junk} skipped`);
+    setStatus(statusParts.join(" · ") + ".");
   } catch (e) {
     setStatus(`Error: ${e.message}`);
   } finally {
@@ -301,20 +676,21 @@ scanSaveBtn.addEventListener("click", async () => {
 
 async function renderPreview(items, sourceUrl) {
   previewListEl.innerHTML = "";
-  // get library to know which keys already exist
-  const library = await afGetLibrary();
-  const existingKeys = new Set(Object.keys(library.entries || {}));
 
   items.forEach((item, idx) => {
     const row = document.createElement("div");
-    row.className = "af-field-card";
-    // Uncheck items whose key already exists in the library
-    const shouldBeChecked = !existingKeys.has(item.key);
+    row.className = "af-field-card" + (item.saveStatus === "update" ? " af-field-card-update" : "");
+    // New + updates are checked; (unchanged no longer appear here)
+    const shouldBeChecked = true;
+    const badge =
+      item.saveStatus === "update"
+        ? `<span class="af-type-badge af-type-badge-update" title="Library has a different value">update</span>`
+        : `<span class="af-type-badge">${escapeAttr(item.sourceType || "text")}</span>`;
     row.innerHTML = `
       <div class="af-field-card-top">
-        <input type="checkbox" ${shouldBeChecked ? 'checked' : ''} data-idx="${idx}" class="af-row-check" />
+        <input type="checkbox" ${shouldBeChecked ? "checked" : ""} data-idx="${idx}" class="af-row-check" />
         <input type="text" class="af-field-label" value="${escapeAttr(item.label)}" data-field="label" data-idx="${idx}" placeholder="Field name" />
-        <span class="af-type-badge">${escapeAttr(item.sourceType)}</span>
+        ${badge}
       </div>
       <div class="af-field-card-body">
         <div class="af-field-group">
@@ -391,7 +767,8 @@ document.getElementById("af-preview-confirm").addEventListener("click", async ()
   await afSaveEntries(entriesToSave);
   hidePreview();
   setStatus(`Saved ${entriesToSave.length} fields.`);
-  refreshLibraryCount();
+  await refreshLibraryCount();
+  if (afLibraryMode) await loadLibraryBrowser(true);
 });
 
 // --- Job application questions (essay) ---

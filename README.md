@@ -19,7 +19,7 @@ Remembers your answers as you type them, matches them to new forms with rules fi
 
 - 💾 **Learns as you go** — save the fields you fill on any page into a personal library (email, phone, address, or anything custom).
 - ⚡ **One-click autofill** — the next form gets filled instantly. Rule matching is free and offline; Gemini steps in only for the fields rules can't place.
-- 📄 **Resume upload** — drop in one or more PDF/DOCX resumes; the matching file is placed straight into the page's file input.
+- 📄 **Resume upload** — drop in one or more PDF/DOCX resumes; only the real Resume/CV field is filled (not “Additional files” / cover-letter uploads).
 - 🧠 **Essay answers in your style** — for questions like *"Why do you want to work here?"*, it drafts a natural, first-person answer grounded in your context + resume — never inventing facts.
 - 🔒 **Private by design** — everything lives in `chrome.storage.local`. Only field *metadata* and library *keys* are ever sent to Gemini — **your saved values never leave the device**.
 
@@ -37,8 +37,9 @@ Remembers your answers as you type them, matches them to new forms with rules fi
 
 | Action | What happens |
 | --- | --- |
-| **💾 Save to library** | Scans the current page for filled fields and lets you review/edit which to remember. |
+| **💾 Save to library** | Scans filled fields, hides ones already identical in the library, skips confirm-email/consent junk, and lets you review new or changed values. |
 | **⚡ Autofill** | Matches every field against your library (rules → Gemini fallback) and fills them. |
+| **📚 Library browser** | In the popup: 🔍 header button, footer pill, or `/` — search, copy, edit, or delete saved fields without leaving the popup. |
 | **🔍 Auto search** | Toggle in the popup/options. When on, pages are scanned automatically and a small hint appears if fillable fields are found. |
 | **⌨️ Shortcuts** | **Alt+Shift+A** — fill. **Alt+Shift+S** — save to library. **Alt+Shift+F** — toggle auto-search. Work even when auto-search is off. Rebind at `chrome://extensions/shortcuts`. |
 | **✨ Generate** | For open-ended questions with no saved answer, drafts a reply from your context + resume. |

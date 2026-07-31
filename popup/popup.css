@@ -20,28 +20,43 @@
   --af-radius-sm: 10px;
   --af-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
   --af-font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  /* Chrome action popup practical max — avoid locking taller than the host */
+  --af-popup-max-h: 600px;
 }
 
 * { box-sizing: border-box; }
 
+/*
+ * MV3 popup host is always a solid rectangle — no real window transparency.
+ * Fill edge-to-edge with --af-bg. Cap height so tall main (essay/resume) scrolls
+ * inside .af-main-view only — never body + list (double scroll).
+ */
 html, body {
   margin: 0;
   padding: 0;
+  background: var(--af-bg);
+  overflow: hidden;
+  max-height: var(--af-popup-max-h);
 }
 
 body {
   width: 360px;
   font-family: var(--af-font);
   color: var(--af-text);
-  background: var(--af-bg);
   -webkit-font-smoothing: antialiased;
 }
 
 .af-app {
   position: relative;
+  width: 100%;
   padding: 14px 14px 12px;
   overflow: hidden;
-  min-height: 120px;
+  background: var(--af-bg);
+  display: flex;
+  flex-direction: column;
+  /* Cap only — short main mode still shrink-wraps (no empty space) */
+  max-height: var(--af-popup-max-h);
+  box-sizing: border-box;
 }
 
 .af-glow {
@@ -67,7 +82,37 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 14px;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+  min-height: 32px; /* brand (32px logo) = search row — no height jump */
+}
+
+.af-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Library mode: brand → search field, same header row */
+.af-header-search {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+.af-header-search.hidden {
+  display: none !important;
+}
+.af-brand.hidden {
+  display: none !important;
+}
+
+.af-icon-btn[aria-pressed="true"] {
+  color: var(--af-text);
+  background: var(--af-accent-soft);
+  border-color: rgba(109, 124, 255, 0.4);
 }
 
 .af-brand {
@@ -550,6 +595,18 @@ body {
   padding: 2px 8px;
   text-transform: lowercase;
 }
+.af-type-badge-update {
+  color: #ffd48a;
+  background: rgba(255, 196, 90, 0.12);
+  border-color: rgba(255, 196, 90, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+  font-size: 9px;
+}
+.af-field-card-update {
+  border-color: rgba(255, 196, 90, 0.22);
+}
 
 .af-field-card-body {
   display: flex;
@@ -687,12 +744,270 @@ body {
   color: var(--af-text-faint);
 }
 
+/* --- Main / library views --- */
+
+.af-main-view {
+  display: block;
+  /* Grow when app is capped; scroll HERE only (not body + this) */
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.af-main-view.hidden,
+.af-library-view.hidden {
+  display: none !important;
+}
+
+/* --- Library browser --- */
+
+.af-library-view {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  /* Only the list inside scrolls — view itself never creates a 2nd scrollbar */
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.af-app.af-mode-library {
+  /* Ensure flex children can shrink under locked height */
+  min-height: 0;
+}
+
+/* Slightly more air above the counter in library mode */
+.af-app.af-mode-library .af-footer {
+  padding-top: 10px;
+  margin-top: 0;
+}
+.af-app.af-mode-library .af-header {
+  margin-bottom: 10px; /* slightly tighter → more list space */
+}
+
+.af-library-search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.af-library-search-icon {
+  position: absolute;
+  left: 9px;
+  color: var(--af-text-faint);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.af-library-search {
+  width: 100%;
+  height: 32px; /* matches logo / icon-btn row */
+  padding: 0 32px 0 30px; /* room for clear × on the right */
+  border: 1px solid var(--af-border);
+  border-radius: 9px;
+  background: var(--af-bg-elevated);
+  color: var(--af-text);
+  font-family: inherit;
+  font-size: 12.5px;
+  outline: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.af-library-search::placeholder {
+  color: var(--af-text-faint);
+}
+.af-library-search:focus {
+  border-color: rgba(109, 124, 255, 0.55);
+  background: rgba(0, 0, 0, 0.22);
+}
+/* Hide native search clear — we use our own */
+.af-library-search::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+
+.af-library-search-clear {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 6px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--af-text-muted);
+  cursor: pointer;
+  z-index: 1;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.af-library-search-clear:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--af-text);
+}
+.af-library-search-clear.hidden {
+  display: none !important;
+}
+
+.af-library-browser-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  /* Right padding keeps the scrollbar off the field cards */
+  padding: 0 10px 2px 1px;
+  scrollbar-gutter: stable;
+}
+.af-library-browser-list.hidden {
+  display: none;
+}
+
+.af-lib-row {
+  border: 1px solid var(--af-border);
+  border-radius: 12px;
+  background: var(--af-bg-elevated);
+  padding: 9px 10px;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+.af-lib-row:hover,
+.af-lib-row:focus-within {
+  border-color: var(--af-border-strong);
+  background: var(--af-bg-soft);
+}
+
+.af-lib-row-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.af-lib-row-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.af-lib-label-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--af-text);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 650;
+  padding: 0;
+  margin: 0;
+  outline: none;
+  letter-spacing: -0.01em;
+}
+.af-lib-label-input:focus {
+  color: white;
+}
+
+.af-lib-key {
+  font-size: 10.5px;
+  color: var(--af-text-faint);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.af-lib-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.af-lib-action {
+  width: 28px;
+  height: 28px;
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--af-text-muted);
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.af-lib-action:hover {
+  background: var(--af-bg-hover);
+  color: var(--af-text);
+  border-color: var(--af-border);
+}
+.af-lib-action.af-lib-action-danger:hover {
+  color: var(--af-danger);
+  border-color: rgba(255, 107, 107, 0.35);
+  background: rgba(255, 107, 107, 0.1);
+}
+.af-lib-action.af-copied {
+  color: var(--af-success);
+  border-color: rgba(62, 207, 142, 0.35);
+  background: rgba(62, 207, 142, 0.12);
+}
+
+.af-lib-value-input {
+  width: 100%;
+  border: 1px solid var(--af-border);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--af-text);
+  font-family: inherit;
+  font-size: 12px;
+  padding: 7px 9px;
+  outline: none;
+  resize: none;
+  min-height: 32px;
+  max-height: 88px;
+  line-height: 1.4;
+  overflow-y: auto;
+}
+.af-lib-value-input:focus {
+  border-color: rgba(109, 124, 255, 0.55);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.af-library-empty {
+  margin: auto 0;
+  padding: 18px 12px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--af-text-faint);
+  line-height: 1.45;
+}
+.af-library-empty.hidden {
+  display: none;
+}
+.af-library-empty strong {
+  color: var(--af-text-muted);
+  font-weight: 650;
+}
+
 /* Footer */
 
 .af-footer {
   display: flex;
   justify-content: center;
   padding-top: 2px;
+  flex-shrink: 0;
 }
 
 .af-pill {
@@ -706,17 +1021,37 @@ body {
   border: 1px solid var(--af-border);
   border-radius: 999px;
   padding: 4px 10px;
+  font-family: inherit;
+}
+
+.af-pill-btn {
+  cursor: pointer;
+  transition: color 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+}
+.af-pill-btn:hover {
+  color: var(--af-text-muted);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--af-border-strong);
+}
+.af-pill-btn.af-pill-active {
+  color: #c9d0ff;
+  background: var(--af-accent-soft);
+  border-color: rgba(109, 124, 255, 0.35);
 }
 
 /* Scrollbars */
 .af-preview-list::-webkit-scrollbar,
 .af-essay-list::-webkit-scrollbar,
-.af-resume-menu-list::-webkit-scrollbar {
+.af-resume-menu-list::-webkit-scrollbar,
+.af-library-browser-list::-webkit-scrollbar,
+.af-main-view::-webkit-scrollbar {
   width: 8px;
 }
 .af-preview-list::-webkit-scrollbar-thumb,
 .af-essay-list::-webkit-scrollbar-thumb,
-.af-resume-menu-list::-webkit-scrollbar-thumb {
+.af-resume-menu-list::-webkit-scrollbar-thumb,
+.af-library-browser-list::-webkit-scrollbar-thumb,
+.af-main-view::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.12);
   border-radius: 999px;
 }
