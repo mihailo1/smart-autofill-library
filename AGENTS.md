@@ -74,6 +74,7 @@ Many job applications embed the real form in a **cross-origin iframe** (e.g. Gre
 - List: copy value / copy key / edit label+value (debounced save) / delete
 - **Height lock:** before swap, lock `.af-app` to current height capped at `--af-popup-max-h` (600px) and `window.innerHeight` — only `.af-library-browser-list` scrolls (no double scroll after tall autofill UI)
 - Tall main mode (essay + resume picker): scroll only inside `.af-main-view`
+- Footer pill: `padding-top: 10px` above counter in both modes; scroll areas use right padding + `scrollbar-gutter: stable` so the bar does not hug cards (main, essay, preview, resume menu, library list)
 - **MV3 popup rounding:** Chrome draws an opaque rectangular host — true transparent/rounded window is impossible. Do **not** use body margin + transparent (ugly white frame). Fill host with `--af-bg` edge-to-edge; radius only on inner controls
 
 ### Shared autofill engine (v1.2.0)
@@ -177,8 +178,8 @@ Many job applications embed the real form in a **cross-origin iframe** (e.g. Gre
 
 ## Current state
 
-- **Version:** 1.5.0
-- **Last change:** Popup library browser; smarter save preview; resume vs additional-files; label/keyword fixes; popup height cap (no double scroll)
+- **Version:** 1.5.1
+- **Last change:** Popup spacing — footer air above counter; scrollbar clearance in main + library scroll areas
 - **Language:** all code, comments, and UI strings in English
 
 ## Recommendations for future agents
