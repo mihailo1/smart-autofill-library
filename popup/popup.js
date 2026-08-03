@@ -115,6 +115,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
         frameId: f.frameId != null ? f.frameId : 0,
         label: f.question,
         value: f.value,
+        sources: f.sources || [],
       }));
       renderEssayPanel(restored);
       setStatus(

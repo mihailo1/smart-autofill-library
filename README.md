@@ -20,7 +20,8 @@ Remembers your answers as you type them, matches them to new forms with rules fi
 - 💾 **Learns as you go** — save the fields you fill on any page into a personal library (email, phone, address, or anything custom).
 - ⚡ **One-click autofill** — the next form gets filled instantly. Rule matching is free and offline; Gemini steps in only for the fields rules can't place.
 - 📄 **Resume upload** — drop in one or more PDF/DOCX resumes; only the real Resume/CV field is filled (not “Additional files” / cover-letter uploads).
-- 🧠 **Essay answers in your style** — for questions like *"Why do you want to work here?"*, it drafts a natural, first-person answer grounded in your context + resume — never inventing facts.
+- 🧠 **Essay answers in your style** — drafts first-person answers from your context + resume, **shows grounding quotes** (no invented facts).
+- 📋 **Application tracker** — when you submit a job form, saves the job link, description snippet, and form Q&A in Options.
 - 🔒 **Private by design** — everything lives in `chrome.storage.local`. Only field *metadata* and library *keys* are ever sent to Gemini — **your saved values never leave the device**.
 
 ## 🚀 Install (developer mode)
@@ -93,7 +94,7 @@ Everything is local. When Gemini is used, only **field metadata** (name/id/label
 
 ## ⚙️ Tech
 
-Manifest V3 · vanilla JS (no build step) · Gemini API · pdf.js · mammoth.js
+Manifest V3 · vanilla JS (no build step) · Gemini API · pdf.js · mammoth.js · webextension-polyfill (Chrome / Edge / Firefox)
 
 ## 🧑‍💻 For developers
 

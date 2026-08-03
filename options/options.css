@@ -461,6 +461,91 @@ body {
 .af-resume-text-ok { color: var(--af-success); }
 .af-resume-text-warn { color: #e0b44f; }
 
+/* Applications tracker table */
+.af-apps-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--af-border);
+  border-radius: var(--af-radius-sm);
+  background: rgba(0, 0, 0, 0.18);
+}
+.af-apps-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.af-apps-table.hidden {
+  display: none;
+}
+.af-apps-table th {
+  text-align: left;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--af-text-faint);
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--af-border);
+  white-space: nowrap;
+}
+.af-apps-table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--af-border);
+  vertical-align: top;
+  color: var(--af-text-muted);
+}
+.af-apps-table tr:last-child td {
+  border-bottom: none;
+}
+.af-app-when {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--af-text-faint);
+  font-size: 11.5px;
+}
+.af-app-job-title {
+  font-weight: 650;
+  color: var(--af-text);
+  margin-bottom: 4px;
+}
+.af-app-job-desc {
+  font-size: 11.5px;
+  color: var(--af-text-faint);
+  line-height: 1.4;
+  max-width: 280px;
+}
+.af-app-link a {
+  color: var(--af-accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+.af-app-link a:hover {
+  text-decoration: underline;
+}
+.af-app-answers {
+  max-width: 320px;
+}
+.af-app-qa {
+  margin-bottom: 6px;
+  line-height: 1.35;
+}
+.af-app-qa strong {
+  display: block;
+  color: var(--af-text-muted);
+  font-size: 11px;
+  font-weight: 650;
+}
+.af-app-qa span {
+  color: var(--af-text-faint);
+  font-size: 11.5px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.af-app-qa-more {
+  font-size: 11px;
+  color: var(--af-text-faint);
+}
+
 .af-version-footer {
   margin-top: 22px;
   text-align: center;

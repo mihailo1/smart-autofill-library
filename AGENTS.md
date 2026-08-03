@@ -234,10 +234,26 @@ Many job applications embed the real form in a **cross-origin iframe** (e.g. Gre
 - `geminiApiKey` only in `chrome.storage.local` via `afSetSettings`
 - `afStripSecretsForSync(settings)` strips the key if anything ever writes to `storage.sync`
 
+### Application tracker (v1.8.0)
+
+- Content: form submit / Apply click / thank-you page → scrape job meta + Q&A → `AF_APPLICATION_TRACKED`
+- Storage: `af_applications[]` (schema v2), dedupe same URL within 24h
+- Options UI: Applications table (when, job, link, Q&A, delete)
+
+### Essay grounding (v1.8.0)
+
+- Gemini essay returns JSON `{ answer, sources: [{ source: resume|context, quote }] }`
+- Popup shows green grounding panel under each generated answer
+
+### Cross-browser (v1.8.0)
+
+- Vendored `lib/vendor/browser-polyfill.min.js` first in content / popup / options / SW
+- `browser_specific_settings.gecko` for Firefox; Edge uses Chromium APIs + polyfill
+
 ## Current state
 
-- **Version:** 1.7.0
-- **Last change:** Optional host permissions, unified session clear, SPA history hooks, agents meta script
+- **Version:** 1.8.0
+- **Last change:** Application tracker, essay grounding UI, webextension-polyfill for Firefox/Edge
 - **Language:** all code, comments, and UI strings in English
 
 ## Recommendations for future agents
@@ -290,20 +306,21 @@ _Updated by `node scripts/update-agents-meta.js` · 2026-08-03_
 |------|------:|
 | `lib/fieldDetection.js` | 750 |
 | `lib/autofillEngine.js` | 561 |
-| `content/content-script.js` | 527 |
+| `content/content-script.js` | 536 |
 | `popup/library.js` | 352 |
 | `popup/autofill.js` | 339 |
-| `background/service-worker.js` | 300 |
+| `background/service-worker.js` | 329 |
+| `lib/storage.js` | 326 |
+| `options/options.js` | 311 |
+| `lib/geminiClient.js` | 280 |
 | `lib/matcher.js` | 248 |
-| `lib/geminiClient.js` | 240 |
-| `options/options.js` | 236 |
-| `lib/storage.js` | 228 |
+| `popup/essay.js` | 204 |
 | `lib/conceptVocabulary.js` | 196 |
 | `test/run.js` | 189 |
-| `popup/essay.js` | 161 |
+| `lib/applicationTracker.js` | 182 |
 | `lib/fieldActions.js` | 136 |
-| `popup/popup.js` | 132 |
-| `lib/permissions.js` | 128 |
+| `popup/popup.js` | 133 |
+| `lib/permissions.js` | 130 |
 | `scripts/update-agents-meta.js` | 125 |
 | `popup/session.js` | 115 |
 | `popup/els.js` | 93 |
@@ -311,10 +328,10 @@ _Updated by `node scripts/update-agents-meta.js` · 2026-08-03_
 | `popup/util.js` | 27 |
 | `lib/af.js` | 12 |
 | `lib/fieldDetector.js` | 6 |
-| **Total** | **5160** |
+| **Total** | **5639** |
 
 #### Message-like `AF_*` identifiers
 
-`AF_APPLY_VALUES`, `AF_ENSURE_PAGE_ACCESS`, `AF_FRAME_DOM_CHANGED`, `AF_GET_COMMAND_SHORTCUT`, `AF_PING`, `AF_PLACE_FILE`, `AF_RESCAN_HINT`, `AF_RUN_AUTOFILL`, `AF_RUN_SAVE_LIBRARY`, `AF_SCAN_FIELDS`, `AF_SCAN_TAB`, `AF_SET_AUTO_SEARCH`, `AF_TOAST`
+`AF_APPLICATIONS_KEY`, `AF_APPLICATION_TRACKED`, `AF_APPLY_VALUES`, `AF_ENSURE_PAGE_ACCESS`, `AF_FRAME_DOM_CHANGED`, `AF_GET_COMMAND_SHORTCUT`, `AF_PING`, `AF_PLACE_FILE`, `AF_RESCAN_HINT`, `AF_RUN_AUTOFILL`, `AF_RUN_SAVE_LIBRARY`, `AF_SCAN_FIELDS`, `AF_SCAN_TAB`, `AF_SET_AUTO_SEARCH`, `AF_TOAST`
 
 <!-- END GENERATED META -->

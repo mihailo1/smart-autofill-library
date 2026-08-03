@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Smart Autofill Library",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "Remembers how you fill out forms on websites and automatically fills them next time. Uses Gemini API for smart field matching.",
   "permissions": [
     "storage",
@@ -16,6 +16,12 @@
   ],
   "background": {
     "service_worker": "background/service-worker.js"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "smart-autofill-library@mihailo1.github.io",
+      "strict_min_version": "121.0"
+    }
   },
   "commands": {
     "af-autofill": {
@@ -60,9 +66,11 @@
         "<all_urls>"
       ],
       "js": [
+        "lib/vendor/browser-polyfill.min.js",
         "lib/conceptVocabulary.js",
         "lib/fieldDetection.js",
         "lib/fieldActions.js",
+        "lib/applicationTracker.js",
         "content/content-script.js"
       ],
       "run_at": "document_idle",

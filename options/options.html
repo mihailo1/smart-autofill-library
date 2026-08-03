@@ -123,6 +123,33 @@
     <section class="af-card">
       <div class="af-card-head af-card-head-row">
         <div>
+          <h2>Applications</h2>
+          <p class="af-card-desc">Detected submits — job link, description snippet, and form answers.</p>
+        </div>
+        <button id="af-refresh-applications" class="af-icon-btn" title="Refresh" aria-label="Refresh applications">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.3"/><path d="M21 3v6h-6"/></svg>
+        </button>
+      </div>
+      <div class="af-apps-table-wrap">
+        <table class="af-apps-table" id="af-applications-table">
+          <thead>
+            <tr>
+              <th>When</th>
+              <th>Job</th>
+              <th>Link</th>
+              <th>Q&amp;A</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="af-applications-body"></tbody>
+        </table>
+      </div>
+      <p id="af-applications-empty" class="af-hint hidden">No applications tracked yet. Submit a job form on an allowed site.</p>
+    </section>
+
+    <section class="af-card">
+      <div class="af-card-head af-card-head-row">
+        <div>
           <h2>Field library</h2>
           <p class="af-card-desc">Saved answers used for autofill.</p>
         </div>
@@ -139,6 +166,7 @@
     </footer>
   </div>
 
+  <script src="../lib/vendor/browser-polyfill.min.js"></script>
   <script src="../lib/storage.js"></script>
   <script src="../lib/vendor/pdf.min.js"></script>
   <script src="../lib/vendor/mammoth.browser.js"></script>

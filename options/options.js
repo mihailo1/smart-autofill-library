@@ -223,6 +223,80 @@ async function loadResumes() {
   });
 }
 
+// --- Applications tracker table ---
+
+const applicationsBody = document.getElementById("af-applications-body");
+const applicationsEmpty = document.getElementById("af-applications-empty");
+const refreshApplicationsBtn = document.getElementById("af-refresh-applications");
+
+function afEscapeHtml(s) {
+  return String(s || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function afFormatWhen(iso) {
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "—";
+    return d.toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch (_) {
+    return "—";
+  }
+}
+
+async function loadApplications() {
+  if (!applicationsBody) return;
+  const list = typeof afGetApplications === "function" ? await afGetApplications() : [];
+  applicationsBody.innerHTML = "";
+  if (applicationsEmpty) applicationsEmpty.classList.toggle("hidden", list.length > 0);
+  const table = document.getElementById("af-applications-table");
+  if (table) table.classList.toggle("hidden", list.length === 0);
+
+  list.forEach((app) => {
+    const tr = document.createElement("tr");
+    const jobLabel = [app.title, app.company].filter(Boolean).join(" · ") || "Untitled job";
+    const desc = (app.description || "").slice(0, 160);
+    const qa = (app.answers || [])
+      .slice(0, 6)
+      .map((a) => `<div class="af-app-qa"><strong>${afEscapeHtml(a.q)}</strong><span>${afEscapeHtml(a.a)}</span></div>`)
+      .join("");
+    const more =
+      (app.answers || []).length > 6
+        ? `<div class="af-app-qa-more">+${(app.answers || []).length - 6} more</div>`
+        : "";
+    tr.innerHTML = `
+      <td class="af-app-when">${afEscapeHtml(afFormatWhen(app.submittedAt))}</td>
+      <td class="af-app-job">
+        <div class="af-app-job-title">${afEscapeHtml(jobLabel)}</div>
+        ${desc ? `<div class="af-app-job-desc">${afEscapeHtml(desc)}</div>` : ""}
+      </td>
+      <td class="af-app-link"><a href="${afEscapeHtml(app.url)}" target="_blank" rel="noopener">Open</a></td>
+      <td class="af-app-answers">${qa || "—"}${more}</td>
+      <td><button type="button" class="af-delete-btn" data-id="${afEscapeHtml(app.id)}">Delete</button></td>
+    `;
+    applicationsBody.appendChild(tr);
+  });
+
+  applicationsBody.querySelectorAll(".af-delete-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (typeof afDeleteApplication === "function") {
+        await afDeleteApplication(btn.dataset.id);
+        loadApplications();
+      }
+    });
+  });
+}
+
+refreshApplicationsBtn?.addEventListener("click", () => loadApplications());
+
 // Version taken from manifest to avoid maintaining it in two places.
 const versionEl = document.getElementById("af-version");
 if (versionEl && typeof chrome !== "undefined" && chrome.runtime?.getManifest) {
@@ -233,3 +307,4 @@ loadSettings();
 loadShortcutLabel();
 loadLibrary();
 loadResumes();
+loadApplications();

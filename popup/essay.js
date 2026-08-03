@@ -24,10 +24,43 @@ function renderEssayPanel(essayFields) {
         </div>
       </div>
       <textarea class="af-essay-answer" data-afid="${escapeAttr(field.afId)}" data-frame-id="${escapeAttr(field.frameId != null ? field.frameId : 0)}" rows="4" placeholder="Answer will appear here after generation, or type manually...">${escapeAttr(field.value || '')}</textarea>
+      <div class="af-essay-grounding hidden" data-afid="${escapeAttr(field.afId)}" aria-live="polite"></div>
     `;
     essayListEl.appendChild(item);
+    if (field.sources && field.sources.length) {
+      afRenderEssayGrounding(item.querySelector(".af-essay-grounding"), field.sources);
+    }
   });
   essayPanelEl.classList.remove("hidden");
+
+  function afRenderEssayGrounding(host, sources) {
+    if (!host) return;
+    const list = Array.isArray(sources) ? sources.filter((s) => s && s.quote) : [];
+    if (!list.length) {
+      host.classList.add("hidden");
+      host.textContent = "";
+      return;
+    }
+    host.classList.remove("hidden");
+    host.innerHTML = "";
+    const title = document.createElement("div");
+    title.className = "af-essay-grounding-title";
+    title.textContent = "Grounded in your materials (no invented facts)";
+    host.appendChild(title);
+    list.forEach((s) => {
+      const row = document.createElement("div");
+      row.className = "af-essay-grounding-item";
+      const badge = document.createElement("span");
+      badge.className = "af-essay-grounding-badge";
+      badge.textContent = s.source === "resume" ? "Resume" : "Context";
+      const q = document.createElement("span");
+      q.className = "af-essay-grounding-quote";
+      q.textContent = s.quote;
+      row.appendChild(badge);
+      row.appendChild(q);
+      host.appendChild(row);
+    });
+  }
 
   // Persist essay panel so reopening the popup restores typed/generated answers
   async function persistEssayState() {
@@ -37,7 +70,13 @@ function renderEssayPanel(essayFields) {
         const frameId = Number(el.dataset.frameId || 0);
         const question = el.dataset.question;
         const textarea = el.querySelector(".af-essay-answer");
-        return { afId, frameId, question, value: textarea.value };
+        let sources = [];
+        try {
+          sources = JSON.parse(el.dataset.sources || "[]");
+        } catch (_) {
+          sources = [];
+        }
+        return { afId, frameId, question, value: textarea.value, sources };
       });
       const tab = await getActiveTab();
       await afPersistEssay(current, tab?.url || "", tab?.id);
@@ -99,13 +138,17 @@ function renderEssayPanel(essayFields) {
       try {
         const resumeForAnswer =
           afChosenResume || (settings.resumes || []).find((r) => r.id === settings.defaultResumeId);
-        const answer = await afCallGeminiForEssayAnswer(
+        const result = await afCallGeminiForEssayAnswer(
           question,
           settings.contextText || "",
           resumeForAnswer?.textContent || "",
           settings
         );
+        const answer = typeof result === "string" ? result : result?.answer || "";
+        const sources = typeof result === "object" && result ? result.sources || [] : [];
         textarea.value = answer;
+        item.dataset.sources = JSON.stringify(sources);
+        afRenderEssayGrounding(item.querySelector(".af-essay-grounding"), sources);
         await persistEssayState();
       } catch (err) {
         setStatus(`Generation error: ${err.message}`);

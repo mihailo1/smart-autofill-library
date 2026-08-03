@@ -523,4 +523,13 @@ if (!AF_IS_TOP_FRAME) {
 
 afInitContent();
 
+// Application tracker (submit / success page → options table)
+try {
+  if (typeof afInstallApplicationTracker === "function") {
+    afInstallApplicationTracker();
+  }
+} catch (e) {
+  console.warn("AF application tracker init failed", e);
+}
+
 } // end __AF_CONTENT_SCRIPT__ guard

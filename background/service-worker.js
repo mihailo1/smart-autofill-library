@@ -1,6 +1,13 @@
 // Background service worker: keyboard shortcuts and requests from content-script / popup.
 // importScripts loads shared modules (classic scripts, no ES modules).
 
+// browser polyfill first (Firefox/Edge); classic SW has no import maps
+try {
+  importScripts("../lib/vendor/browser-polyfill.min.js");
+} catch (e) {
+  console.warn("browser-polyfill load failed", e);
+}
+
 importScripts(
   "../lib/storage.js",
   "../lib/permissions.js",
@@ -161,6 +168,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           request: message.request !== false,
         });
         sendResponse({ ok: true, result });
+      } catch (e) {
+        sendResponse({ ok: false, error: e.message || String(e) });
+      }
+    })();
+    return true;
+  }
+
+  if (message?.type === "AF_APPLICATION_TRACKED") {
+    (async () => {
+      try {
+        const app = message.application || {};
+        if (typeof afAddApplication === "function") {
+          await afAddApplication({
+            url: app.url || sender.tab?.url || "",
+            title: app.title || "",
+            company: app.company || "",
+            description: app.description || "",
+            answers: app.answers || [],
+            source: app.source || "auto",
+          });
+        }
+        sendResponse({ ok: true });
       } catch (e) {
         sendResponse({ ok: false, error: e.message || String(e) });
       }
