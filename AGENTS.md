@@ -10,19 +10,25 @@ This document captures architecture decisions, conventions, and guidelines for A
 filler/
 ├── manifest.json              # MV3 manifest (permissions, content scripts, background, commands)
 ├── background/
-│   └── service-worker.js      # Keyboard shortcuts + fill requests from hint
+│   └── service-worker.js      # Keyboard shortcuts + fill requests from hint + storage migrate
 ├── content/
 │   └── content-script.js      # DOM IO, auto-search, hint/toast UI
 ├── lib/
-│   ├── fieldDetector.js       # Field scanning, concept guessing, apply (only DOM-touching code)
+│   ├── af.js                  # Global AF namespace bootstrap (classic scripts)
+│   ├── fieldDetection.js      # Scan / labels / essay / resume heuristics (DOM reads)
+│   ├── fieldActions.js        # afApplyValues / afPlaceFile (DOM writes)
+│   ├── fieldDetector.js       # Shim (docs only) — load detection + actions instead
 │   ├── matcher.js             # Rule-based matching (offline, fast)
 │   ├── conceptVocabulary.js   # Vocabulary for concept guessing
-│   ├── geminiClient.js        # Gemini API calls (matching, classification, essay generation)
+│   ├── geminiClient.js        # Gemini API + in-memory match session cache
 │   ├── autofillEngine.js      # Shared fill pipeline (popup + background)
-│   ├── storage.js             # chrome.storage.local wrapper
+│   ├── storage.js             # chrome.storage.local + schema version migrate
 │   └── resumeParser.js        # PDF/DOCX text extraction
-├── popup/                     # Orchestrator UI
-├── options/                   # Settings, resumes, context, library
+├── popup/                     # AF.popup.* modules (classic scripts, no bundler)
+│   ├── els.js util.js session.js library.js autofill.js essay.js popup.js
+├── options/
+├── test/run.js                # Zero-dep node unit tests
+├── .github/workflows/ci.yml   # node --check + test/run.js
 └── icons/
 ```
 
@@ -71,7 +77,7 @@ Many job applications embed the real form in a **cross-origin iframe** (e.g. Gre
 **Popup library browser (v1.5.0):**
 - Toggle via header 🔍, footer pill, or `/` — swaps main view for search/edit without growing the shell
 - Search lives **in the header** (replaces brand); clear × appears **inside** the input when non-empty
-- List: copy value / copy key / edit label+value (debounced save) / delete
+- List: copy value / edit label+value (debounced save) / delete
 - **Height lock:** before swap, lock `.af-app` to current height capped at `--af-popup-max-h` (600px) and `window.innerHeight` — only `.af-library-browser-list` scrolls (no double scroll after tall autofill UI)
 - Tall main mode (essay + resume picker): scroll only inside `.af-main-view`
 - Footer pill: `padding-top: 10px` above counter in both modes; scroll areas use right padding + `scrollbar-gutter: stable` so the bar does not hug cards (main, essay, preview, resume menu, library list)
@@ -176,10 +182,34 @@ Many job applications embed the real form in a **cross-origin iframe** (e.g. Gre
 - **No external dependencies** (except pdf.js and mammoth.js in `vendor/`)
 - **Concept vocabulary keywords:** include Russian terms for matching fields on Russian-language sites
 
+### Classic-script modularity (v1.6.0)
+
+- No bundler: split via **file order + `AF` namespace / `self.*` globals**
+- **fieldDetection.js** (reads) vs **fieldActions.js** (writes) — test detection helpers without firing DOM events
+- **popup/** modules: `els` → `util` → `session` → `library` → `autofill` → `essay` → `popup.js` bootstrap
+- Register on `AF.popup.*` and re-export globals for compatibility
+
+### Storage schema versioning (v1.6.0)
+
+- Key `af_schema_version` (current: **1**)
+- `afMigrateStorageIfNeeded()` on service worker start and popup open
+- When changing `entries[key]` shape: bump version and add a migration step
+
+### Gemini match cache (v1.6.0)
+
+- In-memory map in `geminiClient.js`: hash(fields metadata + library keys + model) → matches
+- Session-only (cleared when SW dies); avoids repeat API calls on same form
+- `afGeminiMatchCacheClear()` if library edits need invalidation later
+
+### Tests & CI (v1.6.0)
+
+- `node test/run.js` — matcher, vocabulary, fieldDetection pure helpers (no npm)
+- GitHub Actions: `node --check` all non-vendor JS + unit tests on push/PR
+
 ## Current state
 
-- **Version:** 1.5.1
-- **Last change:** Popup spacing — footer air above counter; scrollbar clearance in main + library scroll areas
+- **Version:** 1.6.0
+- **Last change:** Modular classic scripts (AF.popup / fieldDetection+Actions), storage schema v1, Gemini match cache, node tests + CI
 - **Language:** all code, comments, and UI strings in English
 
 ## Recommendations for future agents
@@ -194,10 +224,13 @@ Many job applications embed the real form in a **cross-origin iframe** (e.g. Gre
 8. **Preserve `frameId` with every field** when applying values or restoring essay state
 9. **Update this file after each commit** — keep decisions and state current
 10. **Test in browser** — no automated tests; verify on Greenhouse / Teamtailor / join.com / Ashby after reload
-11. **Check syntax with `node --check <file>`** — catches typos before commit
-12. **Use English comments and English UI strings** — match existing style (concept vocabulary keywords may include other languages for form matching)
-13. **Do not try true rounded MV3 popup windows** — host is opaque rectangle; full-bleed dark only
-14. **Save preview must hide library-identical values** — use `afBuildLibrarySaveItems`, don't re-list all filled fields
+11. **Check syntax with `node --check <file>`** — catches typos before commit; CI also runs this
+12. **Run `node test/run.js`** before push when touching matcher / vocabulary / detection
+13. **Use English comments and English UI strings** — match existing style (concept vocabulary keywords may include other languages for form matching)
+14. **Do not try true rounded MV3 popup windows** — host is opaque rectangle; full-bleed dark only
+15. **Save preview must hide library-identical values** — use `afBuildLibrarySaveItems`, don't re-list all filled fields
+16. **Bump `AF_SCHEMA_VERSION` + migration** when changing storage shapes
+17. **Keep popup module load order** in `popup.html` — do not introduce ES modules without a bundler
 
 ## Known limitations
 

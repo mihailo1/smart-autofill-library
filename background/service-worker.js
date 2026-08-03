@@ -9,6 +9,11 @@ importScripts(
   "../lib/autofillEngine.js"
 );
 
+// Ensure library/settings shape before handling commands
+if (typeof afMigrateStorageIfNeeded === "function") {
+  afMigrateStorageIfNeeded().catch((e) => console.warn("storage migrate", e));
+}
+
 const AF_COMMAND_AUTOFILL = "af-autofill";
 const AF_COMMAND_SAVE = "af-save-library";
 const AF_COMMAND_AUTO_SEARCH = "af-toggle-auto-search";
@@ -189,4 +194,65 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   return false;
+});
+
+// --- Popup session (preview / essay) lifecycle ---
+// Survives popup close; cleared on tab switch, URL navigation, or 30 min TTL (checked on open).
+
+const AF_POPUP_SESSION_TTL_MS = 30 * 60 * 1000;
+
+async function afClearPopupSessionKeys() {
+  try {
+    await chrome.storage.local.remove(["af_last_preview", "af_last_essay"]);
+  } catch (_) {
+    /* ignore */
+  }
+}
+
+async function afMaybeClearPopupSession({ reason, tabId } = {}) {
+  try {
+    const data = await chrome.storage.local.get(["af_last_preview", "af_last_essay"]);
+    const blobs = [data.af_last_preview, data.af_last_essay].filter(Boolean);
+    if (blobs.length === 0) return;
+
+    const now = Date.now();
+    const expired = blobs.some(
+      (b) => b.savedAt != null && now - Number(b.savedAt) > AF_POPUP_SESSION_TTL_MS
+    );
+    if (expired) {
+      await afClearPopupSessionKeys();
+      return;
+    }
+
+    const onTab = (b) => b.tabId != null && tabId != null && Number(b.tabId) === Number(tabId);
+    const otherTab = (b) => b.tabId != null && tabId != null && Number(b.tabId) !== Number(tabId);
+
+    let clear = false;
+    if (reason === "tab-activated") {
+      // Switched away from the tab that owns the session
+      clear = blobs.some(otherTab);
+    } else if (reason === "url") {
+      // Navigated within the session tab
+      clear = blobs.some(onTab);
+    } else if (reason === "tab-removed") {
+      clear = blobs.some(onTab);
+    }
+
+    if (clear) await afClearPopupSessionKeys();
+  } catch (e) {
+    console.warn("afMaybeClearPopupSession failed", e);
+  }
+}
+
+chrome.tabs.onActivated.addListener((activeInfo) => {
+  afMaybeClearPopupSession({ reason: "tab-activated", tabId: activeInfo.tabId });
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (!changeInfo.url) return;
+  afMaybeClearPopupSession({ reason: "url", tabId });
+});
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  afMaybeClearPopupSession({ reason: "tab-removed", tabId });
 });

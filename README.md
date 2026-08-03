@@ -97,6 +97,16 @@ Manifest V3 · vanilla JS (no build step) · Gemini API · pdf.js · mammoth.js
 
 See [`AGENTS.md`](./AGENTS.md) for architecture decisions, conventions, and guidelines for AI agents working on this repo.
 
+```bash
+# syntax
+find . -name '*.js' ! -path './lib/vendor/*' -exec node --check {} \;
+
+# unit tests (no npm)
+node test/run.js
+```
+
+CI (GitHub Actions) runs both on every push/PR.
+
 ## 📝 License
 
 MIT

@@ -181,6 +181,7 @@ body {
   gap: 8px;
 }
 
+
 .af-btn {
   border: none;
   border-radius: 12px;
@@ -195,9 +196,8 @@ body {
   gap: 9px;
   text-align: left;
 }
-.af-btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none !important; }
-.af-btn:hover:not(:disabled) { transform: translateY(-1px); }
-.af-btn:active:not(:disabled) { transform: translateY(0); }
+.af-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+/* No translateY lift on hover — keeps Autofill/Save stable */
 
 .af-btn-primary {
   color: white;

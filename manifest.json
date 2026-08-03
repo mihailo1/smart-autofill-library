@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Smart Autofill Library",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "description": "Remembers how you fill out forms on websites and automatically fills them next time. Uses Gemini API for smart field matching.",
   "permissions": [
     "storage",
@@ -60,7 +60,8 @@
       ],
       "js": [
         "lib/conceptVocabulary.js",
-        "lib/fieldDetector.js",
+        "lib/fieldDetection.js",
+        "lib/fieldActions.js",
         "content/content-script.js"
       ],
       "run_at": "document_idle",
