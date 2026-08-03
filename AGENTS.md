@@ -206,10 +206,38 @@ Many job applications embed the real form in a **cross-origin iframe** (e.g. Gre
 - `node test/run.js` — matcher, vocabulary, fieldDetection pure helpers (no npm)
 - GitHub Actions: `node --check` all non-vendor JS + unit tests on push/PR
 
+### Optional host permissions (v1.7.0)
+
+- **No required `host_permissions: <all_urls>`** — uses `optional_host_permissions` + `activeTab` + `scripting`
+- On Autofill/Save/auto-search: `afEnsurePageAccess(tab)` → optional origin grant + inject content stack if needed
+- Content script guard `__AF_CONTENT_SCRIPT__` prevents double listeners on re-inject
+- `AF_PING` probes live CS; `lib/permissions.js` shared by popup + service worker
+- Auto-search only works on origins the user has allowed (install UX + CWS review friendlier)
+
+### Session cleanup (v1.7.0)
+
+- Single entry: `afClearSessionData(reason, { tabId })` in service worker
+- Listeners only dispatch reasons: `tab-activated` | `url` | `tab-removed`
+
+### SPA URL detect (v1.7.0)
+
+- No `location.href` polling; `history.pushState` / `replaceState` monkey-patch + `popstate` / `hashchange`
+- Scans still gated on `afAutoSearchEnabled`
+
+### Tooling (v1.7.0)
+
+- `node scripts/update-agents-meta.js` — regenerates line counts + AF_* list in AGENTS.md
+- `bash scripts/check.sh` — syntax + tests + agents meta (local pre-commit style)
+
+### Secrets
+
+- `geminiApiKey` only in `chrome.storage.local` via `afSetSettings`
+- `afStripSecretsForSync(settings)` strips the key if anything ever writes to `storage.sync`
+
 ## Current state
 
-- **Version:** 1.6.0
-- **Last change:** Modular classic scripts (AF.popup / fieldDetection+Actions), storage schema v1, Gemini match cache, node tests + CI
+- **Version:** 1.7.0
+- **Last change:** Optional host permissions, unified session clear, SPA history hooks, agents meta script
 - **Language:** all code, comments, and UI strings in English
 
 ## Recommendations for future agents
@@ -249,3 +277,44 @@ After each commit:
 2. Update "Current state" with the new version and last commit
 3. Add any new conventions or recommendations
 4. Remove outdated information
+
+<!-- BEGIN GENERATED META -->
+
+### Generated metadata (do not edit by hand)
+
+_Updated by `node scripts/update-agents-meta.js` · 2026-08-03_
+
+#### Line counts (non-vendor JS)
+
+| File | Lines |
+|------|------:|
+| `lib/fieldDetection.js` | 750 |
+| `lib/autofillEngine.js` | 561 |
+| `content/content-script.js` | 527 |
+| `popup/library.js` | 352 |
+| `popup/autofill.js` | 339 |
+| `background/service-worker.js` | 300 |
+| `lib/matcher.js` | 248 |
+| `lib/geminiClient.js` | 240 |
+| `options/options.js` | 236 |
+| `lib/storage.js` | 228 |
+| `lib/conceptVocabulary.js` | 196 |
+| `test/run.js` | 189 |
+| `popup/essay.js` | 161 |
+| `lib/fieldActions.js` | 136 |
+| `popup/popup.js` | 132 |
+| `lib/permissions.js` | 128 |
+| `scripts/update-agents-meta.js` | 125 |
+| `popup/session.js` | 115 |
+| `popup/els.js` | 93 |
+| `lib/resumeParser.js` | 59 |
+| `popup/util.js` | 27 |
+| `lib/af.js` | 12 |
+| `lib/fieldDetector.js` | 6 |
+| **Total** | **5160** |
+
+#### Message-like `AF_*` identifiers
+
+`AF_APPLY_VALUES`, `AF_ENSURE_PAGE_ACCESS`, `AF_FRAME_DOM_CHANGED`, `AF_GET_COMMAND_SHORTCUT`, `AF_PING`, `AF_PLACE_FILE`, `AF_RESCAN_HINT`, `AF_RUN_AUTOFILL`, `AF_RUN_SAVE_LIBRARY`, `AF_SCAN_FIELDS`, `AF_SCAN_TAB`, `AF_SET_AUTO_SEARCH`, `AF_TOAST`
+
+<!-- END GENERATED META -->

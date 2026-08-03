@@ -3,6 +3,7 @@
 
 importScripts(
   "../lib/storage.js",
+  "../lib/permissions.js",
   "../lib/conceptVocabulary.js",
   "../lib/matcher.js",
   "../lib/geminiClient.js",
@@ -18,13 +19,17 @@ const AF_COMMAND_AUTOFILL = "af-autofill";
 const AF_COMMAND_SAVE = "af-save-library";
 const AF_COMMAND_AUTO_SEARCH = "af-toggle-auto-search";
 
-async function afGetActiveTabId() {
+async function afGetActiveTab() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab || tab.id == null) throw new Error("No active tab.");
-  // chrome:// and store pages are not accessible by content scripts
-  if (tab.url && /^(chrome|chrome-extension|edge|about|devtools):/i.test(tab.url)) {
+  if (tab.url && afIsRestrictedUrl(tab.url)) {
     throw new Error("This extension doesn't work on this page.");
   }
+  return tab;
+}
+
+async function afGetActiveTabId() {
+  const tab = await afGetActiveTab();
   return tab.id;
 }
 
@@ -41,9 +46,18 @@ async function afToastError(err) {
   }
 }
 
+async function afPrepareActiveTab(options = {}) {
+  const tab =
+    options.tabId != null
+      ? (await chrome.tabs.get(options.tabId))
+      : await afGetActiveTab();
+  await afEnsurePageAccess(tab, { request: options.request !== false });
+  return tab;
+}
+
 async function afRunAutofillOnActiveTab(options = {}) {
-  const tabId = options.tabId != null ? options.tabId : await afGetActiveTabId();
-  return afAutofillTab(tabId, {
+  const tab = await afPrepareActiveTab(options);
+  return afAutofillTab(tab.id, {
     placeDefaultResume: options.placeDefaultResume !== false,
     resume: options.resume || null,
     notifyPage: options.notifyPage !== false,
@@ -52,8 +66,8 @@ async function afRunAutofillOnActiveTab(options = {}) {
 }
 
 async function afRunSaveOnActiveTab(options = {}) {
-  const tabId = options.tabId != null ? options.tabId : await afGetActiveTabId();
-  return afSaveTabToLibrary(tabId, {
+  const tab = await afPrepareActiveTab(options);
+  return afSaveTabToLibrary(tab.id, {
     notifyPage: options.notifyPage !== false,
     onStatus: options.onStatus || null,
   });
@@ -61,7 +75,17 @@ async function afRunSaveOnActiveTab(options = {}) {
 
 async function afToggleAutoSearch() {
   const settings = await afGetSettings();
-  settings.autoSearchMode = !settings.autoSearchMode;
+  const enabling = !settings.autoSearchMode;
+  if (enabling) {
+    // Auto-search needs ongoing host access on the current site
+    try {
+      const tab = await afGetActiveTab();
+      await afEnsurePageAccess(tab, { request: true });
+    } catch (e) {
+      throw new Error(e.message || "Allow this site to enable auto-search.");
+    }
+  }
+  settings.autoSearchMode = enabling;
   await afSetSettings(settings);
   const enabled = !!settings.autoSearchMode;
   try {
@@ -72,7 +96,7 @@ async function afToggleAutoSearch() {
       kind: "info",
     });
   } catch (_) {
-    /* no accessible tab — storage change still updates content scripts */
+    /* no accessible tab — storage change still updates content scripts that are live */
   }
   return enabled;
 }
@@ -80,11 +104,11 @@ async function afToggleAutoSearch() {
 chrome.commands.onCommand.addListener(async (command) => {
   try {
     if (command === AF_COMMAND_AUTOFILL) {
-      await afRunAutofillOnActiveTab({ placeDefaultResume: true, notifyPage: true });
+      await afRunAutofillOnActiveTab({ placeDefaultResume: true, notifyPage: true, request: true });
       return;
     }
     if (command === AF_COMMAND_SAVE) {
-      await afRunSaveOnActiveTab({ notifyPage: true });
+      await afRunSaveOnActiveTab({ notifyPage: true, request: true });
       return;
     }
     if (command === AF_COMMAND_AUTO_SEARCH) {
@@ -106,12 +130,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             ? message.tabId
             : sender.tab?.id != null
               ? sender.tab.id
-              : await afGetActiveTabId();
+              : undefined;
         const result = await afRunAutofillOnActiveTab({
           tabId,
           placeDefaultResume: message.placeDefaultResume !== false,
           resume: message.resume || null,
           notifyPage: message.notifyPage !== false,
+          request: message.request !== false,
         });
         sendResponse({ ok: true, result });
       } catch (e) {
@@ -129,12 +154,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             ? message.tabId
             : sender.tab?.id != null
               ? sender.tab.id
-              : await afGetActiveTabId();
+              : undefined;
         const result = await afRunSaveOnActiveTab({
           tabId,
           notifyPage: message.notifyPage !== false,
+          request: message.request !== false,
         });
         sendResponse({ ok: true, result });
+      } catch (e) {
+        sendResponse({ ok: false, error: e.message || String(e) });
+      }
+    })();
+    return true;
+  }
+
+  if (message?.type === "AF_ENSURE_PAGE_ACCESS") {
+    (async () => {
+      try {
+        const tab =
+          message.tabId != null
+            ? await chrome.tabs.get(message.tabId)
+            : await afGetActiveTab();
+        await afEnsurePageAccess(tab, { request: message.request !== false });
+        sendResponse({ ok: true, tabId: tab.id, url: tab.url });
       } catch (e) {
         sendResponse({ ok: false, error: e.message || String(e) });
       }
@@ -152,6 +194,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             : sender.tab?.id != null
               ? sender.tab.id
               : await afGetActiveTabId();
+        // Hint path: do not prompt; require prior grant / active inject
+        try {
+          const tab = await chrome.tabs.get(tabId);
+          await afEnsurePageAccess(tab, { request: false });
+        } catch (_) {
+          /* may already be injected */
+        }
         const result = await afScanTab(tabId);
         sendResponse({ ok: true, ...result });
       } catch (e) {
@@ -201,58 +250,50 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 const AF_POPUP_SESSION_TTL_MS = 30 * 60 * 1000;
 
-async function afClearPopupSessionKeys() {
+/**
+ * Single entry-point for clearing ephemeral popup session data.
+ * @param {"tab-activated"|"url"|"tab-removed"|"ttl"|"manual"} reason
+ * @param {{ tabId?: number }} [ctx]
+ */
+async function afClearSessionData(reason, ctx = {}) {
   try {
-    await chrome.storage.local.remove(["af_last_preview", "af_last_essay"]);
-  } catch (_) {
-    /* ignore */
-  }
-}
-
-async function afMaybeClearPopupSession({ reason, tabId } = {}) {
-  try {
+    const { tabId } = ctx;
     const data = await chrome.storage.local.get(["af_last_preview", "af_last_essay"]);
     const blobs = [data.af_last_preview, data.af_last_essay].filter(Boolean);
-    if (blobs.length === 0) return;
+    if (blobs.length === 0) return { cleared: false, reason };
 
     const now = Date.now();
     const expired = blobs.some(
       (b) => b.savedAt != null && now - Number(b.savedAt) > AF_POPUP_SESSION_TTL_MS
     );
-    if (expired) {
-      await afClearPopupSessionKeys();
-      return;
-    }
 
     const onTab = (b) => b.tabId != null && tabId != null && Number(b.tabId) === Number(tabId);
     const otherTab = (b) => b.tabId != null && tabId != null && Number(b.tabId) !== Number(tabId);
 
-    let clear = false;
-    if (reason === "tab-activated") {
-      // Switched away from the tab that owns the session
-      clear = blobs.some(otherTab);
-    } else if (reason === "url") {
-      // Navigated within the session tab
-      clear = blobs.some(onTab);
-    } else if (reason === "tab-removed") {
-      clear = blobs.some(onTab);
-    }
+    let clear = reason === "manual" || reason === "ttl" || expired;
+    if (!clear && reason === "tab-activated") clear = blobs.some(otherTab);
+    if (!clear && reason === "url") clear = blobs.some(onTab);
+    if (!clear && reason === "tab-removed") clear = blobs.some(onTab);
 
-    if (clear) await afClearPopupSessionKeys();
+    if (clear) {
+      await chrome.storage.local.remove(["af_last_preview", "af_last_essay"]);
+      return { cleared: true, reason };
+    }
+    return { cleared: false, reason };
   } catch (e) {
-    console.warn("afMaybeClearPopupSession failed", e);
+    console.warn("afClearSessionData failed", reason, e);
+    return { cleared: false, reason, error: String(e) };
   }
 }
 
+// One dispatcher for all tab lifecycle events (no duplicated clear logic).
 chrome.tabs.onActivated.addListener((activeInfo) => {
-  afMaybeClearPopupSession({ reason: "tab-activated", tabId: activeInfo.tabId });
+  afClearSessionData("tab-activated", { tabId: activeInfo.tabId });
 });
-
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (!changeInfo.url) return;
-  afMaybeClearPopupSession({ reason: "url", tabId });
+  afClearSessionData("url", { tabId });
 });
-
 chrome.tabs.onRemoved.addListener((tabId) => {
-  afMaybeClearPopupSession({ reason: "tab-removed", tabId });
+  afClearSessionData("tab-removed", { tabId });
 });

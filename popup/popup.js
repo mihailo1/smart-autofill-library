@@ -17,19 +17,31 @@
 // --- Auto-search + shortcuts ---
 
 autoSearchInput.addEventListener("change", async () => {
+  if (autoSearchInput.checked && typeof afEnsurePageAccess === "function") {
+    try {
+      const tab = await getActiveTab();
+      await afEnsurePageAccess(tab, { request: true });
+    } catch (e) {
+      autoSearchInput.checked = false;
+      const settings = await afGetSettings();
+      settings.autoSearchMode = false;
+      await afSetSettings(settings);
+      setStatus(e.message || "Allow this site to enable auto-search.");
+      return;
+    }
+  }
   const settings = await afGetSettings();
   settings.autoSearchMode = autoSearchInput.checked;
   await afSetSettings(settings);
   setStatus(
     autoSearchInput.checked
-      ? "Auto-search enabled — hint will appear on pages with fields."
+      ? "Auto-search enabled on this site — hint will appear when fields are found."
       : "Auto-search disabled."
   );
 });
 
 shortcutLinkEl.addEventListener("click", (e) => {
   e.preventDefault();
-  // Chrome opens the shortcuts page when user goes to chrome://extensions/shortcuts
   chrome.tabs.create({ url: "chrome://extensions/shortcuts" });
 });
 
@@ -65,7 +77,6 @@ async function loadShortcutLabel() {
   }
 }
 
-// Keep toggle in sync when auto-search is flipped via keyboard shortcut.
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "local" || !changes.af_settings) return;
   const next = changes.af_settings.newValue || {};
@@ -78,6 +89,12 @@ chrome.storage.onChanged.addListener((changes, area) => {
   await loadShortcutLabel();
   try {
     const tab = await getActiveTab();
+    if (tab?.url && typeof afHasOriginPermission === "function") {
+      const has = await afHasOriginPermission(tab.url);
+      if (!has && statusEl && !statusEl.textContent) {
+        setStatus("First use on a site asks for access (optional permission — not all websites).");
+      }
+    }
     const res = await new Promise((resolve) =>
       chrome.storage.local.get(["af_last_preview", "af_last_essay"], resolve)
     );

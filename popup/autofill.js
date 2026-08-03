@@ -54,6 +54,9 @@ autofillBtn.addEventListener("click", async () => {
   setStatus("Scanning page...");
   try {
     const tab = await getActiveTab();
+    if (typeof afEnsurePageAccess === "function") {
+      await afEnsurePageAccess(tab, { request: true });
+    }
     const scanResult = await scanPage(tab.id);
     const allFields = scanResult.fields || [];
     const resumeUploadFields = scanResult.resumeUploadFields || [];
@@ -174,6 +177,9 @@ scanSaveBtn.addEventListener("click", async () => {
   setStatus("Scanning page...");
   try {
     const tab = await getActiveTab();
+    if (typeof afEnsurePageAccess === "function") {
+      await afEnsurePageAccess(tab, { request: true });
+    }
     const scanResult = await scanPage(tab.id);
     const fields = (scanResult.fields || []).filter((f) => !f.isEssay && (f.value || "").trim() !== "");
 

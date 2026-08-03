@@ -25,3 +25,8 @@ jobs:
 
       - name: Unit tests (matcher / vocabulary / field helpers)
         run: node test/run.js
+
+      - name: Refresh AGENTS.md metadata (fail if dirty)
+        run: |
+          node scripts/update-agents-meta.js
+          git diff --exit-code AGENTS.md || (echo "AGENTS.md meta out of date — run: node scripts/update-agents-meta.js" && exit 1)

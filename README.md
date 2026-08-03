@@ -85,9 +85,11 @@ Remembers your answers as you type them, matches them to new forms with rules fi
 - **`content/`** — content script: DOM IO, auto-search observer, floating hint + toast.
 - **`popup/`** — the orchestrator UI. **`options/`** — settings, resumes, context, and the saved-field library.
 
-## 🔐 Privacy
+## 🔐 Privacy & permissions
 
 Everything is local. When Gemini is used, only **field metadata** (name/id/label/placeholder/type) and library **keys + labels** are sent — enough to decide *which* saved value maps to *which* field. The actual values (email, phone, essay answers) are substituted **locally** after Gemini responds.
+
+**Site access:** the extension does **not** require “read data on all websites” at install. It uses **optional host permissions** plus `activeTab`: the first Autofill/Save (or auto-search) on a site asks you to allow that origin. Your Gemini API key stays in `chrome.storage.local` only (never designed for `storage.sync`).
 
 ## ⚙️ Tech
 
@@ -98,14 +100,15 @@ Manifest V3 · vanilla JS (no build step) · Gemini API · pdf.js · mammoth.js
 See [`AGENTS.md`](./AGENTS.md) for architecture decisions, conventions, and guidelines for AI agents working on this repo.
 
 ```bash
-# syntax
-find . -name '*.js' ! -path './lib/vendor/*' -exec node --check {} \;
+# full local check (syntax + tests + AGENTS.md meta)
+bash scripts/check.sh
 
-# unit tests (no npm)
+# or separately:
 node test/run.js
+node scripts/update-agents-meta.js
 ```
 
-CI (GitHub Actions) runs both on every push/PR.
+CI (GitHub Actions) runs syntax + tests on every push/PR.
 
 ## 📝 License
 

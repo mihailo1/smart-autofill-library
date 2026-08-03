@@ -1,11 +1,25 @@
 // Content script: DOM scanning, auto-search, floating hint, toast, apply.
 // Injected into all frames (all_frames: true). Only the top frame owns UI (hint/toast)
 // and auto-search; iframes only answer scan/apply/place messages.
+// Guard against double injection via scripting.executeScript.
+
+const AF_IS_TOP_FRAME = window === window.top;
+
+if (self.__AF_CONTENT_SCRIPT__) {
+  // Already live in this frame — still answer pings from new injectors.
+  chrome.runtime.onMessage.addListener((message, _s, sendResponse) => {
+    if (message?.type === "AF_PING") {
+      sendResponse({ ok: true, top: AF_IS_TOP_FRAME, href: location.href, dup: true });
+      return true;
+    }
+    return false;
+  });
+} else {
+self.__AF_CONTENT_SCRIPT__ = true;
 
 const AF_HINT_HOST_ID = "af-smart-hint-host";
 const AF_TOAST_HOST_ID = "af-smart-toast-host";
 const AF_SCAN_DEBOUNCE_MS = 600;
-const AF_IS_TOP_FRAME = window === window.top;
 
 let afAutoSearchEnabled = false;
 let afScanTimer = null;
@@ -17,6 +31,11 @@ let afHintDismissedForUrl = "";
 // --- Messages ---
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === "AF_PING") {
+    sendResponse({ ok: true, top: AF_IS_TOP_FRAME, href: location.href });
+    return true;
+  }
+
   if (message.type === "AF_SCAN_FIELDS") {
     const { fields, resumeUploadFields } = afCollectFields();
     sendResponse({ fields, resumeUploadFields, url: window.location.href });
@@ -417,28 +436,50 @@ if (AF_IS_TOP_FRAME) {
   });
 }
 
-// SPA navigations: soft URL change. Watcher runs only while auto-search is enabled.
-let afNavIntervalId = null;
+// SPA navigations: pushState / replaceState / popstate (no polling).
 let afLastHref = location.href;
+let afHistoryPatched = false;
+
+function afOnSpaUrlMaybeChanged() {
+  if (!AF_IS_TOP_FRAME || !afAutoSearchEnabled) return;
+  if (location.href === afLastHref) return;
+  afLastHref = location.href;
+  afHintDismissedForUrl = "";
+  afScheduleScan();
+}
+
+function afPatchHistoryForSpa() {
+  if (!AF_IS_TOP_FRAME || afHistoryPatched) return;
+  afHistoryPatched = true;
+  const wrap = (type) => {
+    const orig = history[type];
+    if (typeof orig !== "function") return;
+    history[type] = function afPatchedHistory() {
+      const ret = orig.apply(this, arguments);
+      try {
+        afOnSpaUrlMaybeChanged();
+      } catch (_) {
+        /* ignore */
+      }
+      return ret;
+    };
+  };
+  wrap("pushState");
+  wrap("replaceState");
+  window.addEventListener("popstate", afOnSpaUrlMaybeChanged);
+  window.addEventListener("hashchange", afOnSpaUrlMaybeChanged);
+}
 
 function afStartNavWatcher() {
   if (!AF_IS_TOP_FRAME) return;
-  if (afNavIntervalId != null) return;
   afLastHref = location.href;
-  afNavIntervalId = setInterval(() => {
-    if (location.href !== afLastHref) {
-      afLastHref = location.href;
-      afHintDismissedForUrl = "";
-      afScheduleScan();
-    }
-  }, 1000);
+  afPatchHistoryForSpa();
 }
 
 function afStopNavWatcher() {
-  if (afNavIntervalId != null) {
-    clearInterval(afNavIntervalId);
-    afNavIntervalId = null;
-  }
+  // Keep history patches (cheap); scans only run while auto-search is enabled
+  // via afOnSpaUrlMaybeChanged guard on afAutoSearchEnabled.
+  afLastHref = location.href;
 }
 
 // Nested frames: when their DOM changes (SPA job form steps), ask top to re-scan.
@@ -481,3 +522,5 @@ if (!AF_IS_TOP_FRAME) {
 }
 
 afInitContent();
+
+} // end __AF_CONTENT_SCRIPT__ guard
